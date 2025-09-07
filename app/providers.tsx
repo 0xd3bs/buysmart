@@ -1,9 +1,9 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { type ReactNode, useMemo } from "react";
 import { MiniKitProvider } from "@coinbase/onchainkit/minikit";
 
-// Base chain configuration for MiniKit
+// Base chain configuration for MiniKit - moved outside component to prevent re-creation
 const base = {
   id: 8453,
   name: 'Base',
@@ -28,19 +28,22 @@ const base = {
 };
 
 export function Providers(props: { children: ReactNode }) {
+  // Memoize config to prevent unnecessary re-renders
+  const config = useMemo(() => ({
+    appearance: {
+      mode: "auto" as const,
+      theme: "mini-app-theme",
+      name: process.env.NEXT_PUBLIC_ONCHAINKIT_PROJECT_NAME,
+      logo: process.env.NEXT_PUBLIC_ICON_URL,
+    },
+  }), []);
+
   return (
     <MiniKitProvider
       apiKey={process.env.NEXT_PUBLIC_ONCHAINKIT_API_KEY}
       chain={base}
       projectId={process.env.NEXT_PUBLIC_ONCHAINKIT_PROJECT_ID}
-      config={{        
-        appearance: {
-          mode: "auto",
-          theme: "mini-app-theme",
-          name: process.env.NEXT_PUBLIC_ONCHAINKIT_PROJECT_NAME,
-          logo: process.env.NEXT_PUBLIC_ICON_URL,
-        },
-      }}
+      config={config}
     >
       {props.children}
     </MiniKitProvider>

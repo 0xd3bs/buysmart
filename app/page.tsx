@@ -30,6 +30,7 @@ export default function App() {
   const { setFrameReady, isFrameReady, context } = useMiniKit();
   const [frameAdded, setFrameAdded] = useState(false);
   const [activeTab, setActiveTab] = useState<"trade" | "dashboard">("trade");
+  const [isInitialized, setIsInitialized] = useState(false);
 
   const addFrame = useAddFrame();
   const openUrl = useOpenUrl();
@@ -37,8 +38,14 @@ export default function App() {
   useEffect(() => {
     if (!isFrameReady) {
       setFrameReady();
+    } else if (!isInitialized) {
+      // Small delay to ensure smooth transition
+      const timer = setTimeout(() => {
+        setIsInitialized(true);
+      }, 100);
+      return () => clearTimeout(timer);
     }
-  }, [setFrameReady, isFrameReady]);
+  }, [setFrameReady, isFrameReady, isInitialized]);
 
   const handleAddFrame = useCallback(async () => {
     const frameAdded = await addFrame();
@@ -72,8 +79,24 @@ export default function App() {
     return null;
   }, [context, frameAdded, handleAddFrame]);
 
+  // Show loading state until frame is ready and initialized
+  if (!isFrameReady || !isInitialized) {
+    return (
+      <div className="flex flex-col min-h-screen font-sans text-[var(--app-foreground)] mini-app-theme from-[var(--app-background)] to-[var(--app-gray)]">
+        <div className="w-full max-w-md mx-auto px-4 py-3">
+          <div className="flex items-center justify-center min-h-screen">
+            <div className="animate-pulse">
+              <div className="w-8 h-8 bg-[var(--app-accent)] rounded-full mx-auto mb-4"></div>
+              <div className="text-sm text-[var(--app-foreground-muted)]">Loading...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col min-h-screen font-sans text-[var(--app-foreground)] mini-app-theme from-[var(--app-background)] to-[var(--app-gray)]">
+    <div className="flex flex-col min-h-screen font-sans text-[var(--app-foreground)] mini-app-theme from-[var(--app-background)] to-[var(--app-gray)] animate-fade-in">
       <div className="w-full max-w-md mx-auto px-4 py-3">
         <header className="flex justify-between items-center mb-3 h-11">
           <div>

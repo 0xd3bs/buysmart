@@ -32,13 +32,24 @@ const nextConfig = {
   
   // Optimize package imports for Mini Apps
   experimental: {
-    optimizePackageImports: ['@coinbase/onchainkit']
+    optimizePackageImports: ['@coinbase/onchainkit'],
+    // Improve hydration performance
+    optimizeCss: true,
   },
   
   // Reduce bundle size
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production'
-  }
+  },
+  
+  // Improve performance for Mini Apps
+  poweredByHeader: false,
+  generateEtags: false,
+  
+  // Optimize for mobile and Mini Apps
+  images: {
+    unoptimized: true,
+  },
 };
 
 export default nextConfig;
