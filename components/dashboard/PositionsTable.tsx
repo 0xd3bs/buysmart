@@ -201,32 +201,31 @@ export function PositionsTable() {
     <Card 
       title="Positions"
       titleExtra={
-        <div className="flex items-center gap-2">
-          {lastPriceUpdate && (
-            <div className="text-xs text-[var(--app-foreground-muted)]">
-              Last update: {new Date(lastPriceUpdate).toLocaleTimeString()}
-            </div>
-          )}
-          <Button
-            onClick={handleUpdatePrices}
-            disabled={isUpdatingPrices}
-            variant="outline"
-            size="sm"
-          >
-            {isUpdatingPrices ? "Updating..." : "Update Prices"}
-          </Button>
+        <div className="flex items-center gap-1">
           {positions.length > 0 && (
             <Button
               onClick={handleDeleteAllPositions}
               disabled={isDeleting === "all"}
               variant="outline"
               size="sm"
-              className="text-red-600 border-red-300 hover:bg-red-50"
+              className="text-red-600 border-red-300 hover:bg-red-50 p-2"
               icon={<Icon name="trash-2" size="sm" />}
+              title="Delete all positions"
             >
               {isDeleting === "all" ? "..." : ""}
             </Button>
           )}
+          <Button
+            onClick={handleUpdatePrices}
+            disabled={isUpdatingPrices}
+            variant="outline"
+            size="sm"
+            className="p-2"
+            icon={<Icon name="refresh-cw" size="sm" />}
+            title={isUpdatingPrices ? "Updating prices..." : "Update current ETH prices"}
+          >
+            {isUpdatingPrices ? "..." : ""}
+          </Button>
         </div>
       }
     >
@@ -238,19 +237,26 @@ export function PositionsTable() {
         </div>
       ) : (
         <div className="space-y-3">
+          {/* Last update info - moved inside card for better mobile layout */}
+          {lastPriceUpdate && (
+            <div className="text-xs text-[var(--app-foreground-muted)] text-center pb-2 border-b border-[var(--app-card-border)]">
+              Last price update: {new Date(lastPriceUpdate).toLocaleTimeString()}
+            </div>
+          )}
+          
           {/* 🎯 MOBILE-FIRST: Card-based layout instead of table */}
           {positions.map((position) => (
-            <div key={position.id} className="bg-[var(--app-card)] border border-[var(--app-card-border)] rounded-lg p-3">
-              <div className="flex justify-between items-start mb-2">
-                <div className="flex-1">
-                  <div className="text-sm font-medium text-[var(--app-foreground)]">
+            <div key={position.id} className="bg-[var(--app-card)] border border-[var(--app-card-border)] rounded-lg p-4">
+              <div className="flex justify-between items-start">
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-[var(--app-foreground)] mb-1">
                     {formatDateOnly(position.openedAt)} {formatTimeOnly(position.openedAt)}
                   </div>
                   <div className="text-xs text-[var(--app-foreground-muted)]">
                     {position.closedAt ? `Closed: ${formatDateOnly(position.closedAt)} ${formatTimeOnly(position.closedAt)}` : 'Open Position'}
                   </div>
                 </div>
-                <div className="text-right">
+                <div className="ml-3 flex-shrink-0">
                   {getPerformanceSummary(position)}
                 </div>
               </div>

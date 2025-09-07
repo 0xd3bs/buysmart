@@ -1,6 +1,6 @@
 "use client";
 
-type IconName = "heart" | "star" | "check" | "plus" | "arrow-right" | "help-circle" | "trash-2";
+type IconName = "heart" | "star" | "check" | "plus" | "arrow-right" | "help-circle" | "trash-2" | "refresh-cw";
 
 type IconProps = {
   name: IconName;
@@ -65,6 +65,16 @@ export function Icon({ name, size = "md", className = "" }: IconProps) {
         <path d="M10 11v6" />
         <path d="M14 11v6" />
         <path d="M15 6V4a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v2" />
+      </svg>
+    ),
+    "refresh-cw": (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" 
+          stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <title>Refresh</title>
+        <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+        <path d="M21 3v5h-5" />
+        <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+        <path d="M3 21v-5h5" />
       </svg>
     ),
   };
