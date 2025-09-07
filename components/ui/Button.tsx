@@ -11,6 +11,7 @@ type ButtonProps = {
   disabled?: boolean;
   type?: "button" | "submit" | "reset";
   icon?: ReactNode;
+  title?: string;
 };
 
 export function Button({
@@ -22,6 +23,7 @@ export function Button({
   disabled = false,
   type = "button",
   icon,
+  title,
 }: ButtonProps) {
   const baseClasses =
     "inline-flex items-center justify-center font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0052FF] disabled:opacity-50 disabled:pointer-events-none";
@@ -49,6 +51,7 @@ export function Button({
       className={`${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
       onClick={onClick}
       disabled={disabled}
+      title={title}
     >
       {icon && <span className="flex items-center mr-2">{icon}</span>}
       {children}
