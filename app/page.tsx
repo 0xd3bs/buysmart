@@ -31,6 +31,7 @@ export default function App() {
   const { setFrameReady, isFrameReady, context } = useMiniKit();
   const [frameAdded, setFrameAdded] = useState(false);
   const [activeTab, setActiveTab] = useState<"trade" | "dashboard">("trade");
+  const [walletReady, setWalletReady] = useState(false);
   const addFrame = useAddFrame();
   const openUrl = useOpenUrl();
 
@@ -39,6 +40,19 @@ export default function App() {
       setFrameReady();
     }
   }, [setFrameReady, isFrameReady]);
+
+  // Handle wallet state to prevent flickering
+  useEffect(() => {
+    if (isFrameReady) {
+      // Small delay to ensure wallet components are ready
+      const timer = setTimeout(() => {
+        setWalletReady(true);
+      }, 100);
+      return () => clearTimeout(timer);
+    } else {
+      setWalletReady(false);
+    }
+  }, [isFrameReady]);
 
   const handleAddFrame = useCallback(async () => {
     const frameAdded = await addFrame();
@@ -72,8 +86,8 @@ export default function App() {
     return null;
   }, [context, frameAdded, handleAddFrame]);
 
-  // Show minimal loading state only until frame is ready
-  if (!isFrameReady) {
+  // Show loading state until frame and wallet are ready
+  if (!isFrameReady || !walletReady) {
     return (
       <div className="flex flex-col min-h-screen font-sans text-[var(--app-foreground)] mini-app-theme from-[var(--app-background)] to-[var(--app-gray)]">
         <div className="w-full max-w-md mx-auto px-4 py-3">
