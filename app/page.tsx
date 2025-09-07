@@ -32,7 +32,7 @@ export default function App() {
   const [frameAdded, setFrameAdded] = useState(false);
   const [activeTab, setActiveTab] = useState<"trade" | "dashboard">("trade");
   const [appReady, setAppReady] = useState(false);
-  const [showContent, setShowContent] = useState(false);
+  const [walletContentReady, setWalletContentReady] = useState(false);
   const addFrame = useAddFrame();
   const openUrl = useOpenUrl();
 
@@ -42,21 +42,21 @@ export default function App() {
     }
   }, [setFrameReady, isFrameReady]);
 
-  // Improved initialization sequence to prevent flickering
+  // Enhanced initialization to prevent wallet content flickering
   useEffect(() => {
     if (isFrameReady) {
       // First, mark app as ready
       setAppReady(true);
       
-      // Then, after a brief delay, show content with smooth transition
+      // Then, after a longer delay to ensure wallet content (basename) is loaded
       const timer = setTimeout(() => {
-        setShowContent(true);
-      }, 150);
+        setWalletContentReady(true);
+      }, 500); // Increased delay to allow basename to load
       
       return () => clearTimeout(timer);
     } else {
       setAppReady(false);
-      setShowContent(false);
+      setWalletContentReady(false);
     }
   }, [isFrameReady]);
 
@@ -92,7 +92,7 @@ export default function App() {
     return null;
   }, [context, frameAdded, handleAddFrame]);
 
-  // Show loading state until frame is ready
+  // Show loading state until frame is ready - this replaces the splash screen
   if (!appReady) {
     return (
       <div className="flex flex-col min-h-screen font-sans text-[var(--app-foreground)] mini-app-theme bg-gradient-to-b from-[var(--app-background)] to-[var(--app-gray)]">
@@ -100,9 +100,6 @@ export default function App() {
           <div className="flex items-center justify-center min-h-screen">
             <div className="flex flex-col items-center space-y-4">
               <div className="w-8 h-8 bg-[var(--app-accent)] rounded-full animate-pulse"></div>
-              <div className="text-sm text-[var(--app-foreground-muted)] animate-pulse">
-                Loading...
-              </div>
             </div>
           </div>
         </div>
@@ -111,25 +108,32 @@ export default function App() {
   }
 
   return (
-    <div className={`flex flex-col min-h-screen font-sans text-[var(--app-foreground)] mini-app-theme bg-gradient-to-b from-[var(--app-background)] to-[var(--app-gray)] transition-all duration-300 ${showContent ? 'opacity-100' : 'opacity-0'}`}>
+    <div className="flex flex-col min-h-screen font-sans text-[var(--app-foreground)] mini-app-theme bg-gradient-to-b from-[var(--app-background)] to-[var(--app-gray)] animate-smooth-in">
       <div className="w-full max-w-md mx-auto px-4 py-3">
         <header className="flex justify-between items-center mb-3 h-11">
           <div>
             <div className="flex items-center space-x-2">
-              <Wallet className={`z-10 transition-all duration-300 ${showContent ? 'animate-wallet-ready' : 'opacity-0'}`}>
-                <ConnectWallet>
-                  <Name className="text-inherit" />
-                </ConnectWallet>
-                <WalletDropdown>
-                  <Identity className="px-4 pt-3 pb-2" hasCopyAddressOnClick>
-                    <Avatar />
-                    <Name />
-                    <Address />
-                    <EthBalance />
-                  </Identity>
-                  <WalletDropdownDisconnect />
-                </WalletDropdown>
-              </Wallet>
+              {walletContentReady ? (
+                <Wallet className="z-10 animate-wallet-ready">
+                  <ConnectWallet>
+                    <Name className="text-inherit" />
+                  </ConnectWallet>
+                  <WalletDropdown>
+                    <Identity className="px-4 pt-3 pb-2" hasCopyAddressOnClick>
+                      <Avatar />
+                      <Name />
+                      <Address />
+                      <EthBalance />
+                    </Identity>
+                    <WalletDropdownDisconnect />
+                  </WalletDropdown>
+                </Wallet>
+              ) : (
+                <div className="flex items-center space-x-2 h-8">
+                  <div className="w-6 h-6 bg-[var(--app-accent)] rounded-full animate-pulse"></div>
+                  <div className="w-20 h-4 bg-[var(--app-gray)] rounded animate-pulse"></div>
+                </div>
+              )}
             </div>
           </div>
           <div className="flex items-center space-x-2">

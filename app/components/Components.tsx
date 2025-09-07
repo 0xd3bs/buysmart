@@ -99,9 +99,8 @@ function Popover({ trigger, children }: PopoverProps) {
 }
 
 export function Home() {
-  // Simplified wallet state management - OnchainKit handles the complexity
-  const [isConnected, setIsConnected] = useState(false);
-  const [walletInitialized, setWalletInitialized] = useState(false);
+  // Simplified state management - app is ready when this component renders
+  const [isConnected] = useState(true); // App is ready, wallet will be handled by Swap component
   const [isLoading, setIsLoading] = useState(false);
   const [predictionData, setPredictionData] = useState<PredictionResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -110,19 +109,6 @@ export function Home() {
   
   // Get positions context for auto-creating positions
   const { openPosition } = usePositions();
-
-  // Simplified wallet initialization - let OnchainKit handle the wallet state
-  useEffect(() => {
-    // Small delay to ensure wallet components are ready
-    const timer = setTimeout(() => {
-      setWalletInitialized(true);
-      // For mini apps, we assume connection is handled by the parent context
-      // The Swap component will handle the actual connection state
-      setIsConnected(true);
-    }, 300);
-    
-    return () => clearTimeout(timer);
-  }, []);
 
   useEffect(() => {
     // Si el usuario no está conectado, resetea el componente Swap y los datos de predicción.
@@ -282,9 +268,6 @@ export function Home() {
   const toToken = targetToken;
 
   const getOverlayMessage = () => {
-    if (!walletInitialized) {
-      return "Initializing wallet...";
-    }
     if (!isConnected) {
       return "Connect your wallet to begin.";
     }
@@ -293,28 +276,6 @@ export function Home() {
     }
     return "Run a prediction to enable swap.";
   };
-
-  // Show loading state while wallet is initializing
-  if (!walletInitialized) {
-    return (
-      <div className="space-y-6 animate-fade-in">
-        <div className="text-center text-xs text-[var(--app-foreground-muted)]">
-          <p>
-            Disclaimer: This is an experimental app. All information provided is for informational purposes only and is not financial advice. Use at your own risk.
-          </p>
-        </div>
-
-        <Card title="Buy">
-          <div className="flex flex-col items-center justify-center py-8 space-y-4">
-            <div className="w-6 h-6 bg-[var(--app-accent)] rounded-full animate-pulse"></div>
-            <p className="text-sm text-[var(--app-foreground-muted)]">
-              Initializing wallet connection...
-            </p>
-          </div>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6 animate-smooth-in">
