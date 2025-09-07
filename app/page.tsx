@@ -31,7 +31,8 @@ export default function App() {
   const { setFrameReady, isFrameReady, context } = useMiniKit();
   const [frameAdded, setFrameAdded] = useState(false);
   const [activeTab, setActiveTab] = useState<"trade" | "dashboard">("trade");
-  const [walletReady, setWalletReady] = useState(false);
+  const [appReady, setAppReady] = useState(false);
+  const [showContent, setShowContent] = useState(false);
   const addFrame = useAddFrame();
   const openUrl = useOpenUrl();
 
@@ -41,16 +42,21 @@ export default function App() {
     }
   }, [setFrameReady, isFrameReady]);
 
-  // Handle wallet state to prevent flickering
+  // Improved initialization sequence to prevent flickering
   useEffect(() => {
     if (isFrameReady) {
-      // Small delay to ensure wallet components are ready
+      // First, mark app as ready
+      setAppReady(true);
+      
+      // Then, after a brief delay, show content with smooth transition
       const timer = setTimeout(() => {
-        setWalletReady(true);
-      }, 100);
+        setShowContent(true);
+      }, 150);
+      
       return () => clearTimeout(timer);
     } else {
-      setWalletReady(false);
+      setAppReady(false);
+      setShowContent(false);
     }
   }, [isFrameReady]);
 
@@ -86,13 +92,18 @@ export default function App() {
     return null;
   }, [context, frameAdded, handleAddFrame]);
 
-  // Show loading state until frame and wallet are ready
-  if (!isFrameReady || !walletReady) {
+  // Show loading state until frame is ready
+  if (!appReady) {
     return (
-      <div className="flex flex-col min-h-screen font-sans text-[var(--app-foreground)] mini-app-theme from-[var(--app-background)] to-[var(--app-gray)]">
+      <div className="flex flex-col min-h-screen font-sans text-[var(--app-foreground)] mini-app-theme bg-gradient-to-b from-[var(--app-background)] to-[var(--app-gray)]">
         <div className="w-full max-w-md mx-auto px-4 py-3">
           <div className="flex items-center justify-center min-h-screen">
-            <div className="w-6 h-6 bg-[var(--app-accent)] rounded-full animate-pulse"></div>
+            <div className="flex flex-col items-center space-y-4">
+              <div className="w-8 h-8 bg-[var(--app-accent)] rounded-full animate-pulse"></div>
+              <div className="text-sm text-[var(--app-foreground-muted)] animate-pulse">
+                Loading...
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -100,12 +111,12 @@ export default function App() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen font-sans text-[var(--app-foreground)] mini-app-theme from-[var(--app-background)] to-[var(--app-gray)]">
+    <div className={`flex flex-col min-h-screen font-sans text-[var(--app-foreground)] mini-app-theme bg-gradient-to-b from-[var(--app-background)] to-[var(--app-gray)] transition-all duration-300 ${showContent ? 'opacity-100' : 'opacity-0'}`}>
       <div className="w-full max-w-md mx-auto px-4 py-3">
         <header className="flex justify-between items-center mb-3 h-11">
           <div>
             <div className="flex items-center space-x-2">
-              <Wallet className="z-10">
+              <Wallet className={`z-10 transition-all duration-300 ${showContent ? 'animate-wallet-ready' : 'opacity-0'}`}>
                 <ConnectWallet>
                   <Name className="text-inherit" />
                 </ConnectWallet>

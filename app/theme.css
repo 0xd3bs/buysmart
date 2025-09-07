@@ -130,6 +130,14 @@ body {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
+.animate-smooth-in {
+  animation: smoothIn 0.5s ease-out;
+}
+
+.animate-wallet-ready {
+  animation: walletReady 0.4s ease-out;
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -159,5 +167,27 @@ body {
   }
   50% {
     opacity: .5;
+  }
+}
+
+@keyframes smoothIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes walletReady {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
   }
 }
