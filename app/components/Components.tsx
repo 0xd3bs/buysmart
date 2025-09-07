@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { Card } from "@/components/ui/Card";
 import { usePositions } from "@/lib/positions-context";
+import { createSwapPositionHandler, type SwapTransactionData, type SwapTokens } from "@/lib/swap-position-handler";
 
 // Re-exports for backward compatibility
 export { Button } from "@/components/ui/Button";
@@ -110,6 +111,9 @@ export function Home() {
   // Get positions context for auto-creating positions
   const { openPosition } = usePositions();
 
+  // Create position handler instance
+  const positionHandler = createSwapPositionHandler(openPosition);
+
   useEffect(() => {
     // Si el usuario no está conectado, resetea el componente Swap y los datos de predicción.
     if (!isConnected) {
@@ -118,14 +122,8 @@ export function Home() {
     }
   }, [isConnected]);
 
-  // Handle successful swap - auto-create position (NON-BLOCKING)
-  const handleSwapSuccess = async (transactionData: {
-    price?: number;
-    executionPrice?: number;
-    fromAmount?: string;
-    toAmount?: string;
-    [key: string]: unknown;
-  }) => {
+  // Handle successful swap - delegate to position handler (NON-BLOCKING)
+  const handleSwapSuccess = async (transactionData: SwapTransactionData) => {
     // CRITICAL: This function must NEVER interfere with the swap completion
     // The swap is already successful at this point - we just enhance the UX
     
@@ -137,67 +135,28 @@ export function Home() {
       setSwapSuccessMessage(null);
     }, 3000);
 
-    // Attempt to create position in background (non-blocking)
-    // This runs asynchronously and any failure is completely isolated
-    setTimeout(async () => {
-      try {
-        // Only create position for USDC -> ETH swaps (BUY positions)
-        const isUSDCToETH = fromToken.symbol === 'USDC' && toToken.symbol === 'ETH';
-        
-        if (isUSDCToETH) {
-          // Extract price information from transaction data
-          let ethPrice = 0;
-          
-          // Try to extract price from different possible data structures
-          if (transactionData?.price) {
-            ethPrice = transactionData.price;
-          } else if (transactionData?.executionPrice) {
-            ethPrice = transactionData.executionPrice;
-          } else if (transactionData?.fromAmount && transactionData?.toAmount) {
-            // Calculate price from amounts: USDC amount / ETH amount
-            const usdcAmount = parseFloat(transactionData.fromAmount);
-            const ethAmount = parseFloat(transactionData.toAmount);
-            if (ethAmount > 0) {
-              ethPrice = usdcAmount / ethAmount;
-            }
-          }
-          
-          // If we still don't have a price, try to get current ETH price as fallback
-          if (ethPrice <= 0) {
-            try {
-              const response = await fetch('/api/coingecko/current-price');
-              const priceData = await response.json();
-              ethPrice = priceData.price;
-            } catch (priceError) {
-              console.warn("Failed to fetch current ETH price for position creation:", priceError);
-            }
-          }
-          
-          if (ethPrice > 0) {
-            await openPosition({
-              side: "BUY",
-              priceUsd: ethPrice,
-              openedAt: new Date().toISOString(),
-            });
-            
-            // Show enhanced success message
-            setSwapSuccessMessage("✅ Swap completed! Position automatically created in Position Tracker.");
-            
-            // Clear success message after 5 seconds
-            setTimeout(() => {
-              setSwapSuccessMessage(null);
-            }, 5000);
-          } else {
-            console.warn("Could not determine ETH price from swap data - position not created");
-            // Don't show error message to user - swap was successful
-          }
-        }
-      } catch (error) {
-        // Log error but don't show to user - swap was successful
-        console.warn("Failed to create position from swap (non-critical):", error);
-        // No user-facing error message - swap completed successfully
+    // Delegate position creation to the dedicated handler
+    const tokens: SwapTokens = {
+      fromSymbol: fromToken.symbol,
+      toSymbol: toToken.symbol,
+    };
+
+    await positionHandler.handleSwapSuccess(
+      transactionData,
+      tokens,
+      // Success callback
+      () => {
+        setSwapSuccessMessage("✅ Swap completed! Position automatically created in Position Tracker.");
+        setTimeout(() => {
+          setSwapSuccessMessage(null);
+        }, 5000);
+      },
+      // Error callback (silent - don't show to user)
+      (error) => {
+        console.warn("Position creation failed (non-critical):", error);
+        // Don't show error to user - swap was successful
       }
-    }, 100); // Small delay to ensure swap UI is fully updated first
+    );
   };
 
   // Handle swap error
@@ -405,7 +364,3 @@ export function Home() {
     </div>
   );
 }
-
-
-
-
