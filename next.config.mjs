@@ -33,8 +33,6 @@ const nextConfig = {
   // Optimize package imports for Mini Apps
   experimental: {
     optimizePackageImports: ['@coinbase/onchainkit'],
-    // Improve hydration performance
-    optimizeCss: true,
   },
   
   // Reduce bundle size
