@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { Card } from "@/components/ui/Card";
 import { usePositions } from "@/lib/positions-context";
-import { createSwapPositionHandler, type SwapTransactionData, type SwapTokens } from "@/lib/swap-position-handler";
+import { handleSwapSuccess as createPositionFromSwap, type SwapTransactionData, type SwapTokens } from "@/lib/swap-position-handler";
 
 // Re-exports for backward compatibility
 export { Button } from "@/components/ui/Button";
@@ -107,12 +107,10 @@ export function Home() {
   const [error, setError] = useState<string | null>(null);
   const [swapKey, setSwapKey] = useState(0);
   const [swapSuccessMessage, setSwapSuccessMessage] = useState<string | null>(null);
+  const [isCreatingPosition, setIsCreatingPosition] = useState(false);
   
   // Get positions context for auto-creating positions
   const { openPosition } = usePositions();
-
-  // Create position handler instance
-  const positionHandler = createSwapPositionHandler(openPosition);
 
   useEffect(() => {
     // Si el usuario no está conectado, resetea el componente Swap y los datos de predicción.
@@ -126,6 +124,14 @@ export function Home() {
   const handleSwapSuccess = async (transactionData: SwapTransactionData) => {
     // CRITICAL: This function must NEVER interfere with the swap completion
     // The swap is already successful at this point - we just enhance the UX
+    
+    // Prevent multiple executions
+    if (isCreatingPosition) {
+      console.log("🔄 Position creation already in progress, skipping...");
+      return;
+    }
+    
+    setIsCreatingPosition(true);
     
     // Show immediate success message (swap completed successfully)
     setSwapSuccessMessage("✅ Swap completed successfully!");
@@ -141,20 +147,23 @@ export function Home() {
       toSymbol: toToken.symbol,
     };
 
-    await positionHandler.handleSwapSuccess(
+    await createPositionFromSwap(
       transactionData,
       tokens,
+      openPosition,
       // Success callback
       () => {
         setSwapSuccessMessage("✅ Swap completed! Position automatically created in Position Tracker.");
         setTimeout(() => {
           setSwapSuccessMessage(null);
         }, 5000);
+        setIsCreatingPosition(false);
       },
       // Error callback (silent - don't show to user)
-      (error) => {
+      (error: string) => {
         console.warn("Position creation failed (non-critical):", error);
         // Don't show error to user - swap was successful
+        setIsCreatingPosition(false);
       }
     );
   };
