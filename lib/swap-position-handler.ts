@@ -2,10 +2,11 @@
  * Swap Position Handler
  * 
  * This module handles the automatic creation of positions after successful swaps.
- * It's completely decoupled from the main swap component to maintain separation of concerns.
+ * It reuses the existing position creation logic from positions-context.tsx
+ * to avoid code duplication and ensure consistency.
  */
 
-import { PositionSide, type Position } from "@/lib/positions";
+import { getEthPriceWithFallback } from "@/lib/coingecko-api";
 
 export interface SwapTransactionData {
   price?: number;
@@ -20,170 +21,139 @@ export interface SwapTokens {
   toSymbol: string;
 }
 
-export interface PositionCreationResult {
-  success: boolean;
-  position?: Position;
-  error?: string;
-  price?: number;
-}
-
 /**
  * Handles automatic position creation after a successful swap
  * This function is completely non-blocking and isolated from the swap process
+ * It reuses the existing openPosition function from positions-context.tsx
  */
-export class SwapPositionHandler {
-  private openPosition: (input: { 
-    side: PositionSide; 
+export async function handleSwapSuccess(
+  transactionData: SwapTransactionData,
+  tokens: SwapTokens,
+  openPosition: (input: { 
+    side: "BUY"; 
     priceUsd: number; 
     amount?: number; 
     openedAt?: string; 
-  }) => Promise<Position>;
-
-  constructor(openPositionFunction: (input: { 
-    side: PositionSide; 
-    priceUsd: number; 
-    amount?: number; 
-    openedAt?: string; 
-  }) => Promise<Position>) {
-    this.openPosition = openPositionFunction;
-  }
-
-  /**
-   * Main handler for successful swaps
-   * This runs completely in the background and never interferes with the swap
-   */
-  async handleSwapSuccess(
-    transactionData: SwapTransactionData,
-    tokens: SwapTokens,
-    onSuccess?: (result: PositionCreationResult) => void,
-    onError?: (error: string) => void
-  ): Promise<void> {
-    // Run in background with a small delay to ensure swap UI is updated
-    setTimeout(async () => {
-      try {
-        console.log("🚀 Starting automatic position creation process");
-        console.log("📊 Transaction data received:", transactionData);
-        console.log("🔄 Swap type check:", tokens);
-
-        const result = await this.createPositionFromSwap(transactionData, tokens);
-        
-        if (result.success) {
-          console.log("✅ Position created successfully:", result.position);
-          onSuccess?.(result);
-        } else {
-          console.warn("❌ Position creation failed:", result.error);
-          onError?.(result.error || "Unknown error");
-        }
-      } catch (error) {
-        const errorMessage = `Failed to create position from swap: ${error}`;
-        console.error("❌ Unexpected error in position creation:", error);
-        onError?.(errorMessage);
-      }
-    }, 100);
-  }
-
-  /**
-   * Creates a position from swap data
-   * Only creates positions for USDC -> ETH swaps (BUY positions)
-   */
-  private async createPositionFromSwap(
-    transactionData: SwapTransactionData,
-    tokens: SwapTokens
-  ): Promise<PositionCreationResult> {
-    // Only create position for USDC -> ETH swaps (BUY positions)
-    const isUSDCToETH = tokens.fromSymbol === 'USDC' && tokens.toSymbol === 'ETH';
-    
-    if (!isUSDCToETH) {
-      console.log("ℹ️ Not a USDC -> ETH swap, skipping position creation");
-      return { success: false, error: "Not a USDC -> ETH swap" };
-    }
-
-    // Extract price information from transaction data
-    const ethPrice = await this.extractPrice(transactionData);
-    
-    if (ethPrice <= 0) {
-      console.warn("❌ Could not determine ETH price from swap data");
-      return { success: false, error: "Could not determine ETH price" };
-    }
-
+  }) => Promise<unknown>,
+  onSuccess?: () => void,
+  onError?: (error: string) => void
+): Promise<void> {
+  // Run in background with a small delay to ensure swap UI is updated
+  setTimeout(async () => {
     try {
+      console.log("🚀 Starting automatic position creation process");
+      console.log("📊 Transaction data received:", transactionData);
+      console.log("🔄 Swap type check:", tokens);
+
+      // Only create position for USDC -> ETH swaps (BUY positions)
+      const isUSDCToETH = tokens.fromSymbol === 'USDC' && tokens.toSymbol === 'ETH';
+      
+      if (!isUSDCToETH) {
+        console.log("ℹ️ Not a USDC -> ETH swap, skipping position creation");
+        return;
+      }
+
+      // Extract price information from transaction data
+      const ethPrice = await extractPriceFromSwap(transactionData);
+      
+      if (ethPrice <= 0) {
+        console.warn("❌ Could not determine ETH price from swap data");
+        onError?.("Could not determine ETH price");
+        return;
+      }
+
       console.log("✅ Creating position with price:", ethPrice);
-      const position = await this.openPosition({
+      
+      // Extract timestamp from transaction data or use current time
+      // This ensures consistency with manual position creation format
+      const transactionTimestamp = extractTransactionTimestamp(transactionData);
+      
+      // Use the existing openPosition function from positions-context.tsx
+      // This ensures consistency with manual position creation
+      const position = await openPosition({
         side: "BUY",
         priceUsd: ethPrice,
-        openedAt: new Date().toISOString(),
+        openedAt: transactionTimestamp,
       });
 
-      return { success: true, position, price: ethPrice };
-    } catch (error) {
-      console.error("❌ Failed to create position:", error);
-      return { success: false, error: `Failed to create position: ${error}` };
-    }
-  }
-
-  /**
-   * Extracts ETH price from transaction data
-   * Tries multiple methods to get the most accurate price
-   */
-  private async extractPrice(transactionData: SwapTransactionData): Promise<number> {
-    let ethPrice = 0;
-
-    // Method 1: Direct price from transaction
-    if (transactionData?.price) {
-      ethPrice = transactionData.price;
-      console.log("💰 Using transaction price:", ethPrice);
-      return ethPrice;
-    }
-
-    // Method 2: Execution price
-    if (transactionData?.executionPrice) {
-      ethPrice = transactionData.executionPrice;
-      console.log("💰 Using execution price:", ethPrice);
-      return ethPrice;
-    }
-
-    // Method 3: Calculate from amounts
-    if (transactionData?.fromAmount && transactionData?.toAmount) {
-      const usdcAmount = parseFloat(transactionData.fromAmount);
-      const ethAmount = parseFloat(transactionData.toAmount);
+      console.log("✅ Position created successfully:", position);
+      onSuccess?.();
       
-      if (ethAmount > 0) {
-        ethPrice = usdcAmount / ethAmount;
-        console.log("💰 Calculated price from amounts:", { ethPrice, usdcAmount, ethAmount });
-        return ethPrice;
-      }
+    } catch (error) {
+      console.error("❌ Failed to create position from swap:", error);
+      onError?.(`Failed to create position: ${error}`);
     }
-
-    // Method 4: Fallback to current market price
-    console.log("🔄 Fetching current ETH price as fallback");
-    try {
-      const response = await fetch('/api/coingecko/current-price');
-      if (response.ok) {
-        const priceData = await response.json() as { price: number };
-        ethPrice = priceData.price;
-        console.log("💰 Using fallback price:", ethPrice);
-        return ethPrice;
-      } else {
-        console.warn("❌ Failed to fetch price - response not ok:", response.status);
-      }
-    } catch (priceError) {
-      console.warn("❌ Failed to fetch current ETH price:", priceError);
-    }
-
-    return 0;
-  }
+  }, 100);
 }
 
 /**
- * Factory function to create a position handler instance
+ * Extracts ETH price from transaction data
+ * Tries multiple methods to get the most accurate price
+ * Reuses the same logic as manual position creation
  */
-export function createSwapPositionHandler(
-  openPositionFunction: (input: { 
-    side: PositionSide; 
-    priceUsd: number; 
-    amount?: number; 
-    openedAt?: string; 
-  }) => Promise<Position>
-): SwapPositionHandler {
-  return new SwapPositionHandler(openPositionFunction);
+async function extractPriceFromSwap(transactionData: SwapTransactionData): Promise<number> {
+  // Method 1: Direct price from transaction
+  if (transactionData?.price) {
+    console.log("💰 Using transaction price:", transactionData.price);
+    return transactionData.price;
+  }
+
+  // Method 2: Execution price
+  if (transactionData?.executionPrice) {
+    console.log("💰 Using execution price:", transactionData.executionPrice);
+    return transactionData.executionPrice;
+  }
+
+  // Method 3: Calculate from amounts
+  if (transactionData?.fromAmount && transactionData?.toAmount) {
+    const usdcAmount = parseFloat(transactionData.fromAmount);
+    const ethAmount = parseFloat(transactionData.toAmount);
+    
+    if (ethAmount > 0) {
+      const calculatedPrice = usdcAmount / ethAmount;
+      console.log("💰 Calculated price from amounts:", { calculatedPrice, usdcAmount, ethAmount });
+      return calculatedPrice;
+    }
+  }
+
+  // Method 4: Fallback to current market price using coingecko-api
+  // This reuses the same API logic as manual position creation
+  console.log("🔄 Fetching current ETH price as fallback using coingecko-api");
+  try {
+    const priceData = await getEthPriceWithFallback();
+    console.log("💰 Using fallback price from coingecko-api:", priceData.price);
+    return priceData.price;
+  } catch (priceError) {
+    console.warn("❌ Failed to fetch current ETH price using coingecko-api:", priceError);
+  }
+
+  return 0;
+}
+
+/**
+ * Extracts timestamp from transaction data
+ * Tries to get the actual transaction timestamp, falls back to current time
+ */
+function extractTransactionTimestamp(transactionData: SwapTransactionData): string {
+  // Try to extract timestamp from transaction data
+  if (transactionData?.timestamp && typeof transactionData.timestamp === 'number') {
+    // If timestamp is in seconds, convert to milliseconds
+    const timestamp = transactionData.timestamp * 1000;
+    
+    console.log("📅 Using transaction timestamp:", new Date(timestamp).toISOString());
+    return new Date(timestamp).toISOString();
+  }
+  
+  // Try to extract from block timestamp if available
+  if (transactionData?.blockTimestamp && typeof transactionData.blockTimestamp === 'number') {
+    const timestamp = transactionData.blockTimestamp * 1000;
+    
+    console.log("📅 Using block timestamp:", new Date(timestamp).toISOString());
+    return new Date(timestamp).toISOString();
+  }
+  
+  // Fallback to current time (same format as manual position creation)
+  const currentTime = new Date().toISOString();
+  console.log("📅 Using current time as fallback:", currentTime);
+  return currentTime;
 }
