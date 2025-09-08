@@ -15,6 +15,7 @@ export function PositionsTable() {
   const [lastPriceUpdate, setLastPriceUpdate] = useState<string | null>(null)
   const [isUpdatingPrices, setIsUpdatingPrices] = useState(false)
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
+  const [showDeleteAllModal, setShowDeleteAllModal] = useState(false)
 
   // Function to update current ETH price manually
   const handleUpdatePrices = async () => {
@@ -30,12 +31,14 @@ export function PositionsTable() {
     }
   }
 
-  // Function to delete all positions
+  // Function to show delete all confirmation modal
+  const handleDeleteAllClick = () => {
+    setShowDeleteAllModal(true)
+  }
+
+  // Function to delete all positions (after confirmation)
   const handleDeleteAllPositions = async () => {
-    if (!confirm("Are you sure you want to delete ALL positions? This action cannot be undone.")) {
-      return
-    }
-    
+    setShowDeleteAllModal(false)
     setIsDeleting("all")
     try {
       // Delete all positions one by one
@@ -47,6 +50,11 @@ export function PositionsTable() {
     } finally {
       setIsDeleting(null)
     }
+  }
+
+  // Function to cancel delete all
+  const handleCancelDeleteAll = () => {
+    setShowDeleteAllModal(false)
   }
 
 
@@ -198,13 +206,14 @@ export function PositionsTable() {
   }
 
   return (
+    <>
     <Card 
       title="Positions"
       titleExtra={
         <div className="flex items-center gap-1">
           {positions.length > 0 && (
             <Button
-              onClick={handleDeleteAllPositions}
+              onClick={handleDeleteAllClick}
               disabled={isDeleting === "all"}
               variant="outline"
               size="sm"
@@ -265,5 +274,52 @@ export function PositionsTable() {
         </div>
       )}
     </Card>
+
+    {/* Delete All Confirmation Modal */}
+    {showDeleteAllModal && (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-[var(--app-card-bg)] border border-[var(--app-card-border)] rounded-lg p-6 max-w-md w-full">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+              <span className="text-red-600 text-lg">⚠️</span>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-[var(--app-foreground)]">
+                Delete All Positions
+              </h3>
+              <p className="text-sm text-[var(--app-foreground-muted)]">
+                This action cannot be undone
+              </p>
+            </div>
+          </div>
+          
+          <p className="text-[var(--app-foreground)] mb-6">
+            Are you sure you want to delete <strong>all {positions.length} positions</strong>? 
+            This will permanently remove all your trading history and cannot be undone.
+          </p>
+          
+          <div className="flex gap-3 justify-end">
+            <Button
+              onClick={handleCancelDeleteAll}
+              variant="outline"
+              size="sm"
+              disabled={isDeleting === "all"}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDeleteAllPositions}
+              variant="primary"
+              size="sm"
+              disabled={isDeleting === "all"}
+              className="bg-red-600 hover:bg-red-700 text-white border-red-600"
+            >
+              {isDeleting === "all" ? "Deleting..." : "Delete All"}
+            </Button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   )
 }
