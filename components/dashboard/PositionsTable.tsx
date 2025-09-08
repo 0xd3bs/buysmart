@@ -7,7 +7,7 @@ import { usePositions } from "@/lib/positions-context"
 import type { Position } from "@/lib/positions"
 import { formatDuration } from "@/lib/utils"
 import { getCurrentEthPriceWithTimestamp } from "@/lib/coingecko-api"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
 export function PositionsTable() {
   const { positions, isLoading, error, refreshPositions, deletePosition } = usePositions()
@@ -16,6 +16,26 @@ export function PositionsTable() {
   const [isUpdatingPrices, setIsUpdatingPrices] = useState(false)
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
   const [showDeleteAllModal, setShowDeleteAllModal] = useState(false)
+
+  // Auto-update prices when component mounts (entering Position Tracker tab)
+  useEffect(() => {
+    const updatePricesOnMount = async () => {
+      try {
+        const priceData = await getCurrentEthPriceWithTimestamp()
+        setCurrentEthPrice(priceData.price)
+        setLastPriceUpdate(priceData.fetched_at)
+      } catch (error) {
+        console.error("Failed to auto-update prices on mount:", error)
+        // Don't show error to user - this is background operation
+      }
+    }
+
+    // Only auto-update if we have open positions
+    const hasOpenPositions = positions.some(position => position.status === "OPEN")
+    if (hasOpenPositions) {
+      updatePricesOnMount()
+    }
+  }, [positions]) // Re-run when positions change
 
   // Function to update current ETH price manually
   const handleUpdatePrices = async () => {
@@ -231,7 +251,7 @@ export function PositionsTable() {
             size="sm"
             className="p-2"
             icon={<Icon name="refresh-cw" size="sm" />}
-            title={isUpdatingPrices ? "Updating prices..." : "Update current ETH prices"}
+            title={isUpdatingPrices ? "Updating prices..." : "Update ETH prices on-demand"}
           >
             {isUpdatingPrices ? "..." : ""}
           </Button>
