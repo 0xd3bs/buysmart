@@ -15,7 +15,8 @@ export function PositionsTable() {
   const [lastPriceUpdate, setLastPriceUpdate] = useState<string | null>(null)
   const [isUpdatingPrices, setIsUpdatingPrices] = useState(false)
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
-  const [showDeleteAllModal, setShowDeleteAllModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [positionToDelete, setPositionToDelete] = useState<Position | null>(null)
 
   // Auto-update prices when component mounts (entering Position Tracker tab)
   useEffect(() => {
@@ -51,30 +52,34 @@ export function PositionsTable() {
     }
   }
 
-  // Function to show delete all confirmation modal
-  const handleDeleteAllClick = () => {
-    setShowDeleteAllModal(true)
+
+  // Function to show delete individual position confirmation modal
+  const handleDeleteClick = (position: Position) => {
+    setPositionToDelete(position)
+    setShowDeleteModal(true)
   }
 
-  // Function to delete all positions (after confirmation)
-  const handleDeleteAllPositions = async () => {
-    setShowDeleteAllModal(false)
-    setIsDeleting("all")
+  // Function to delete individual position (after confirmation)
+  const handleDeletePosition = async () => {
+    if (!positionToDelete) return
+    
+    setIsDeleting(positionToDelete.id)
     try {
-      // Delete all positions one by one
-      for (const position of positions) {
-        await deletePosition(position.id)
-      }
+      await deletePosition(positionToDelete.id)
+      setShowDeleteModal(false)
+      setPositionToDelete(null)
     } catch (error) {
-      console.error("Failed to delete all positions:", error)
+      console.error("Failed to delete position:", error)
     } finally {
       setIsDeleting(null)
     }
   }
 
-  // Function to cancel delete all
-  const handleCancelDeleteAll = () => {
-    setShowDeleteAllModal(false)
+  // Function to cancel delete individual position
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false)
+    setPositionToDelete(null)
+    setIsDeleting(null)
   }
 
 
@@ -230,32 +235,17 @@ export function PositionsTable() {
     <Card 
       title="Positions"
       titleExtra={
-        <div className="flex items-center gap-1">
-          {positions.length > 0 && (
-            <Button
-              onClick={handleDeleteAllClick}
-              disabled={isDeleting === "all"}
-              variant="outline"
-              size="sm"
-              className="text-red-600 border-red-300 hover:bg-red-50 p-2"
-              icon={<Icon name="trash-2" size="sm" />}
-              title="Delete all positions"
-            >
-              {isDeleting === "all" ? "..." : ""}
-            </Button>
-          )}
-          <Button
-            onClick={handleUpdatePrices}
-            disabled={isUpdatingPrices}
-            variant="outline"
-            size="sm"
-            className="p-2"
-            icon={<Icon name="refresh-cw" size="sm" />}
-            title={isUpdatingPrices ? "Updating prices..." : "Update ETH prices on-demand"}
-          >
-            {isUpdatingPrices ? "..." : ""}
-          </Button>
-        </div>
+        <Button
+          onClick={handleUpdatePrices}
+          disabled={isUpdatingPrices}
+          variant="outline"
+          size="sm"
+          className="p-2"
+          icon={<Icon name="refresh-cw" size="sm" />}
+          title={isUpdatingPrices ? "Updating prices..." : "Update ETH prices on-demand"}
+        >
+          {isUpdatingPrices ? "..." : ""}
+        </Button>
       }
     >
       {positions.length === 0 ? (
@@ -285,8 +275,19 @@ export function PositionsTable() {
                     {position.closedAt ? `Closed: ${formatDateOnly(position.closedAt)} ${formatTimeOnly(position.closedAt)}` : 'Open Position'}
                   </div>
                 </div>
-                <div className="ml-3 flex-shrink-0">
+                <div className="ml-3 flex-shrink-0 flex items-center gap-2">
                   {getPerformanceSummary(position)}
+                  <Button
+                    onClick={() => handleDeleteClick(position)}
+                    disabled={isDeleting === position.id}
+                    variant="outline"
+                    size="sm"
+                    className="p-1 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                    icon={<Icon name="trash-2" size="sm" />}
+                    title="Delete position"
+                  >
+                    {isDeleting === position.id ? "..." : ""}
+                  </Button>
                 </div>
               </div>
             </div>
@@ -295,8 +296,9 @@ export function PositionsTable() {
       )}
     </Card>
 
-    {/* Delete All Confirmation Modal */}
-    {showDeleteAllModal && (
+
+    {/* Delete Individual Position Confirmation Modal */}
+    {showDeleteModal && positionToDelete && (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div className="bg-[var(--app-card-bg)] border border-[var(--app-card-border)] rounded-lg p-6 max-w-md w-full">
           <div className="flex items-center gap-3 mb-4">
@@ -305,7 +307,7 @@ export function PositionsTable() {
             </div>
             <div>
               <h3 className="text-lg font-semibold text-[var(--app-foreground)]">
-                Delete All Positions
+                Delete Position
               </h3>
               <p className="text-sm text-[var(--app-foreground-muted)]">
                 This action cannot be undone
@@ -314,27 +316,28 @@ export function PositionsTable() {
           </div>
           
           <p className="text-[var(--app-foreground)] mb-6">
-            Are you sure you want to delete <strong>all {positions.length} positions</strong>? 
-            This will permanently remove all your trading history and cannot be undone.
+            Are you sure you want to delete this position opened on{' '}
+            <strong>{formatDateOnly(positionToDelete.openedAt)} {formatTimeOnly(positionToDelete.openedAt)}</strong>?
+            This will permanently remove this position from your trading history.
           </p>
           
           <div className="flex gap-3 justify-end">
             <Button
-              onClick={handleCancelDeleteAll}
+              onClick={handleCancelDelete}
               variant="outline"
               size="sm"
-              disabled={isDeleting === "all"}
+              disabled={isDeleting === positionToDelete.id}
             >
               Cancel
             </Button>
             <Button
-              onClick={handleDeleteAllPositions}
+              onClick={handleDeletePosition}
               variant="primary"
               size="sm"
-              disabled={isDeleting === "all"}
+              disabled={isDeleting === positionToDelete.id}
               className="bg-red-600 hover:bg-red-700 text-white border-red-600"
             >
-              {isDeleting === "all" ? "Deleting..." : "Delete All"}
+              {isDeleting === positionToDelete.id ? "Deleting..." : "Delete"}
             </Button>
           </div>
         </div>
