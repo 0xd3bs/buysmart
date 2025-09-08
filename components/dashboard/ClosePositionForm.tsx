@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/Button"
 import { usePositions } from "@/lib/positions-context"
 import { getEthPriceWithFallback, type PriceWithTimestamp } from "@/lib/coingecko-api"
+import { formatPrice } from "@/lib/utils"
 
 export function ClosePositionForm() {
   const { positions, closePosition } = usePositions()
@@ -106,7 +107,7 @@ export function ClosePositionForm() {
           <option value="">Choose a position...</option>
           {positions.map((position) => (
             <option key={position.id} value={position.id}>
-              {position.side} @ ${position.priceUsd} - {new Date(position.openedAt).toLocaleDateString()}
+              {position.side} @ ${formatPrice(position.priceUsd)} - {new Date(position.openedAt).toLocaleDateString()}
             </option>
           ))}
         </select>
@@ -115,7 +116,7 @@ export function ClosePositionForm() {
       {selectedPositionData && (
         <div className="p-3 bg-[var(--app-gray)] rounded-lg">
           <p className="text-sm text-[var(--app-foreground-muted)]">
-            <strong>Selected:</strong> {selectedPositionData.side} position opened at ${selectedPositionData.priceUsd} on {new Date(selectedPositionData.openedAt).toLocaleString()}
+            <strong>Selected:</strong> {selectedPositionData.side} position opened at ${formatPrice(selectedPositionData.priceUsd)} on {new Date(selectedPositionData.openedAt).toLocaleString()}
           </p>
         </div>
       )}

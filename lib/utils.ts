@@ -79,3 +79,8 @@ export function localToUTC(localDateTime: string): string {
     return new Date().toISOString()
   }
 }
+
+// Format price to 2 decimal places for consistent UI display
+export function formatPrice(price: number): string {
+  return price.toFixed(2)
+}

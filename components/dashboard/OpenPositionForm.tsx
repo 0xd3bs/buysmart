@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button"
 import { usePositions } from "@/lib/positions-context"
 import type { PositionSide } from "@/lib/positions"
 import { getEthPriceWithFallback, type PriceWithTimestamp } from "@/lib/coingecko-api"
+import { formatPrice } from "@/lib/utils"
 
 export function OpenPositionForm() {
   const { openPosition } = usePositions()
@@ -72,7 +73,7 @@ export function OpenPositionForm() {
 
       const localDatetime = new Date(utcDatetime).toLocaleString()
       setSuccess(
-        `BUY position opened successfully at $${finalPriceData.price.toLocaleString()} on ${localDatetime}`
+        `BUY position opened successfully at $${formatPrice(finalPriceData.price)} on ${localDatetime}`
       )
       setFetchedPriceData(null)
       setManualPrice("")
@@ -125,7 +126,7 @@ export function OpenPositionForm() {
         {fetchedPriceData && (
           <div className="p-3 bg-[var(--app-gray)] rounded-lg mb-3">
             <p className="text-sm font-medium text-[var(--app-foreground)]">
-              Fetched Price: ${fetchedPriceData.price.toLocaleString()}
+              Fetched Price: ${formatPrice(fetchedPriceData.price)}
             </p>
             <p className="text-xs text-[var(--app-foreground-muted)]">
               Source: {fetchedPriceData.source.replace("_", " ")} | Fetched:{" "}
