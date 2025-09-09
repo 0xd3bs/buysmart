@@ -328,6 +328,7 @@ export function Home() {
               key={swapKey}
               onSuccess={handleSwapSuccess}
               onError={handleSwapError}
+              isSponsored
             >
             <div className="swap-container">
               <div className="relative">
