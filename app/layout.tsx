@@ -8,7 +8,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const URL = process.env.NEXT_PUBLIC_URL;
   return {
     title: process.env.NEXT_PUBLIC_ONCHAINKIT_PROJECT_NAME,
-    description: "Your Mini App description here",
+    description: process.env.NEXT_PUBLIC_APP_SUBTITLE,
     other: {
       "fc:frame": JSON.stringify({
         version: "next",
