@@ -112,6 +112,27 @@ body {
   font-style: normal;
 }
 
+/* Android-specific scroll fixes - only targets Android WebView */
+@media screen and (-webkit-min-device-pixel-ratio: 0) and (pointer: coarse) {
+  /* This combination targets Android WebView specifically */
+  /* -webkit-min-device-pixel-ratio: 0 targets WebKit browsers */
+  /* pointer: coarse targets touch devices (excludes desktop) */
+  
+  body {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  
+  main {
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .swap-container {
+    touch-action: pan-y;
+  }
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;
