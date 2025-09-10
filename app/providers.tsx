@@ -34,7 +34,7 @@ export function Providers(props: { children: ReactNode }) {
       mode: "auto" as const,
       theme: "mini-app-theme",
       name: process.env.NEXT_PUBLIC_ONCHAINKIT_PROJECT_NAME,
-      logo: process.env.NEXT_PUBLIC_ICON_URL,
+      logo: process.env.NEXT_PUBLIC_APP_ICON,
     },
   }), []);
 
