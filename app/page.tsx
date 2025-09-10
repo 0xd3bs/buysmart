@@ -142,14 +142,16 @@ export default function App() {
         </header>
 
         <main className="flex-1">
-          <Tabs
-            items={[
-              { key: "trade", label: "Buy" },
-              { key: "dashboard", label: "Position Tracker" },
-            ]}
-            activeKey={activeTab}
-            onChange={(key) => setActiveTab(key as "trade" | "dashboard")}
-          />
+          <div className="tabs-container">
+            <Tabs
+              items={[
+                { key: "trade", label: "Buy" },
+                { key: "dashboard", label: "Position Tracker" },
+              ]}
+              activeKey={activeTab}
+              onChange={(key) => setActiveTab(key as "trade" | "dashboard")}
+            />
+          </div>
           <PositionsProvider>
             {activeTab === "trade" && <Home />}
             {activeTab === "dashboard" && <Dashboard />}

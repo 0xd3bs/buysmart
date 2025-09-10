@@ -99,8 +99,14 @@
   --ock-line-inverse: #d4d4d8;
 }
 
+/* Mini app specific touch handling - more granular approach */
 * {
   touch-action: manipulation;
+}
+
+/* Allow natural scrolling in main content areas */
+main, .swap-container, .tabs-container {
+  touch-action: pan-y;
 }
 
 body {
@@ -112,24 +118,27 @@ body {
   font-style: normal;
 }
 
-/* Android-specific scroll fixes - only targets Android WebView */
+/* Mini app specific fixes for Android WebView */
 @media screen and (-webkit-min-device-pixel-ratio: 0) and (pointer: coarse) {
-  /* This combination targets Android WebView specifically */
-  /* -webkit-min-device-pixel-ratio: 0 targets WebKit browsers */
-  /* pointer: coarse targets touch devices (excludes desktop) */
-  
+  /* Prevent pull-to-refresh in mini app context */
   body {
+    overscroll-behavior-y: none;
+  }
+  
+  html {
+    overscroll-behavior-y: none;
+  }
+  
+  /* Ensure smooth scrolling in mini app containers */
+  main {
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
   }
   
-  main {
-    touch-action: pan-y;
-    -webkit-overflow-scrolling: touch;
-  }
-  
+  /* Specific fix for swap area scroll */
   .swap-container {
-    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
   }
 }
 
