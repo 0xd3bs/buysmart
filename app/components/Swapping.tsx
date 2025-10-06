@@ -79,23 +79,19 @@ export function Swapping() {
             isSponsored
           >
             <div className="swap-container">
-              <div className="relative">
-                <SwapAmountInput
-                  label="From"
-                  token={ETH_TOKEN}
-                  type="from"
-                />
-              </div>
-              <div className="relative">
+              <SwapAmountInput
+                label="From"
+                token={ETH_TOKEN}
+                type="from"
+              />
+              <div className="flex justify-center" style={{ margin: 'var(--space-toggle-vertical) 0' }}>
                 <SwapToggleButton />
               </div>
-              <div className="relative">
-                <SwapAmountInput
-                  label="To"
-                  token={USDC_TOKEN}
-                  type="to"
-                />
-              </div>
+              <SwapAmountInput
+                label="To"
+                token={USDC_TOKEN}
+                type="to"
+              />
               <SwapButton />
               <SwapMessage />
               <SwapToast />
