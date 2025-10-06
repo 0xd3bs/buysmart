@@ -145,7 +145,7 @@ export default function App() {
           <div className="tabs-container">
             <Tabs
               items={[
-                { key: "trade", label: "Buy" },
+                { key: "trade", label: "Trade" },
                 { key: "dashboard", label: "Position Tracker" },
               ]}
               activeKey={activeTab}

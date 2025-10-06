@@ -109,8 +109,8 @@ export function Home() {
   const [swapSuccessMessage, setSwapSuccessMessage] = useState<string | null>(null);
   const [isCreatingPosition, setIsCreatingPosition] = useState(false);
   
-  // Get positions context for auto-creating positions
-  const { openPosition } = usePositions();
+  // Get positions context for auto-managing positions
+  const { openPosition, closePosition, positions } = usePositions();
 
   useEffect(() => {
     // Si el usuario no está conectado, resetea el componente Swap y los datos de predicción.
@@ -124,36 +124,53 @@ export function Home() {
   const handleSwapSuccess = async (transactionData: SwapTransactionData) => {
     // CRITICAL: This function must NEVER interfere with the swap completion
     // The swap is already successful at this point - we just enhance the UX
-    
+
     // Prevent multiple executions
     if (isCreatingPosition) {
-      console.log("🔄 Position creation already in progress, skipping...");
+      console.log("🔄 Position management already in progress, skipping...");
       return;
     }
-    
+
     setIsCreatingPosition(true);
-    
+
     // Show immediate success message (swap completed successfully)
     setSwapSuccessMessage("✅ Swap completed successfully!");
-    
+
     // Clear success message after 3 seconds
     setTimeout(() => {
       setSwapSuccessMessage(null);
     }, 3000);
 
-    // Delegate position creation to the dedicated handler
+    // Delegate position management to the dedicated handler
     const tokens: SwapTokens = {
       fromSymbol: fromToken.symbol,
       toSymbol: toToken.symbol,
+    };
+
+    // Helper to get open positions
+    const getOpenPositions = () => {
+      return positions
+        .filter(p => p.status === "OPEN")
+        .map(p => ({ id: p.id, openedAt: p.openedAt }));
     };
 
     await createPositionFromSwap(
       transactionData,
       tokens,
       openPosition,
+      closePosition,
+      getOpenPositions,
       // Success callback
       () => {
-        setSwapSuccessMessage("✅ Swap completed! Position automatically created in Position Tracker.");
+        const isBuySwap = tokens.fromSymbol === 'USDC' && tokens.toSymbol === 'ETH';
+        const isSellSwap = tokens.fromSymbol === 'ETH' && tokens.toSymbol === 'USDC';
+
+        if (isBuySwap) {
+          setSwapSuccessMessage("✅ Swap completed! BUY position automatically created in Position Tracker.");
+        } else if (isSellSwap) {
+          setSwapSuccessMessage("✅ Swap completed! Position automatically closed in Position Tracker.");
+        }
+
         setTimeout(() => {
           setSwapSuccessMessage(null);
         }, 5000);
@@ -161,7 +178,7 @@ export function Home() {
       },
       // Error callback (silent - don't show to user)
       (error: string) => {
-        console.warn("Position creation failed (non-critical):", error);
+        console.warn("Position management failed (non-critical):", error);
         // Don't show error to user - swap was successful
         setIsCreatingPosition(false);
       }
@@ -226,21 +243,22 @@ export function Home() {
     }
   };
 
-  const isSwapDisabled = !isConnected || !predictionData || predictionData.prediction !== 'positive';
+  // Enable swap for both positive (BUY) and negative (SELL) predictions
+  const isSwapDisabled = !isConnected || !predictionData;
+
   const targetToken = predictionData?.tokenToBuy && TOKEN_MAP[predictionData.tokenToBuy]
                   ? TOKEN_MAP[predictionData.tokenToBuy]
                   : ETH_TOKEN; // Default to ETH if no prediction
 
-  // Only BUY functionality - USDC to ETH
-  const fromToken = USDC_TOKEN;
-  const toToken = targetToken;
+  // Determine swap direction based on prediction
+  // Positive prediction: BUY (USDC → ETH)
+  // Negative prediction: SELL (ETH → USDC)
+  const fromToken = predictionData?.prediction === 'negative' ? targetToken : USDC_TOKEN;
+  const toToken = predictionData?.prediction === 'negative' ? USDC_TOKEN : targetToken;
 
   const getOverlayMessage = () => {
     if (!isConnected) {
       return "Connect your wallet to begin.";
-    }
-    if (predictionData && predictionData.prediction === 'negative') {
-      return "Wait for better buying conditions.";
     }
     return "Run a prediction to enable swap.";
   };
@@ -253,22 +271,23 @@ export function Home() {
         </p>
       </div>
 
-      <Card 
-        title="Buy"
+      <Card
+        title={predictionData?.prediction === 'negative' ? "Sell" : "Buy"}
         titleExtra={
           <Popover
             trigger={<Icon name="help-circle" size="sm" className="text-[var(--app-foreground-muted)]" />}
           >
-            <p><strong>This mini app gives you a simple prediction: BUY.</strong></p>
+            <p><strong>This mini app gives you predictions: BUY or SELL.</strong></p>
             <ul className="mt-2 space-y-1 list-disc list-inside text-xs">
-              <li>When <strong>BUY</strong> → you can swap USDC to ETH.</li>
+              <li>When <strong>BUY</strong> → you can swap USDC to ETH (opens position).</li>
+              <li>When <strong>SELL</strong> → you can swap ETH to USDC (closes position).</li>
             </ul>
             <p className="mt-2 text-xs italic">Predictions are based on an 🧠 ML model.</p>
           </Popover>
         }
       >
         <p className="text-[var(--app-foreground-muted)] mb-4">
-          🧠 ML model analyzes the market and tells you when to buy!
+          🧠 ML model analyzes the market and tells you when to buy or sell!
         </p>
         <p className="text-xs italic text-[var(--app-foreground-muted)] text-center mb-4">
           💡 For best results, check predictions at market close or at the same time each day.
@@ -303,11 +322,11 @@ export function Home() {
                 </>
               ) : (
                 <>
-                  <p className="font-bold leading-tight text-amber-500">
-                    Prediction: Wait for Better Conditions
+                  <p className="font-bold leading-tight text-red-500">
+                    Prediction: SELL Opportunity
                   </p>
                   <p className="text-sm leading-tight text-[var(--app-foreground-muted)]">
-                    Market signals suggest waiting before buying.
+                    Good time to exit the market.
                   </p>
                 </>
               )}
@@ -318,9 +337,6 @@ export function Home() {
           <div className="w-full text-center" style={{ height: 'var(--pointer-height)' }}>
             {!isSwapDisabled && (
               <span style={{ fontSize: 'var(--pointer-font-size)' }}>👇</span>
-            )}
-            {predictionData && predictionData.prediction === 'negative' && (
-              <span style={{ fontSize: 'var(--pointer-font-size)' }}>⏳</span>
             )}
           </div>
           <fieldset disabled={isSwapDisabled} className="relative" style={{ marginTop: 'var(--space-swap-top)' }}>
@@ -333,7 +349,7 @@ export function Home() {
             <div className="swap-container">
               <div className="relative">
                 <SwapAmountInput
-                  label="Buy"
+                  label={predictionData?.prediction === 'negative' ? "Sell" : "Buy"}
                   token={fromToken}
                   type="from"
                 />
