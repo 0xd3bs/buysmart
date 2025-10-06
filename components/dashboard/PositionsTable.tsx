@@ -140,7 +140,7 @@ export function PositionsTable() {
       if (isNaN(date.getTime())) {
         return "Invalid Time"
       }
-      
+
       return date.toLocaleTimeString("en-US", {
         hour: "2-digit",
         minute: "2-digit",
@@ -149,6 +149,13 @@ export function PositionsTable() {
     } catch {
       return "Invalid Time"
     }
+  }
+
+  const formatPrice = (price: number): string => {
+    return `$${price.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })}`
   }
 
   // 🎯 OPTIMIZED: Performance function for mobile card layout
@@ -271,9 +278,24 @@ export function PositionsTable() {
                   <div className="text-sm font-medium text-[var(--app-foreground)] mb-1">
                     {formatDateOnly(position.openedAt)} {formatTimeOnly(position.openedAt)}
                   </div>
-                  <div className="text-xs text-[var(--app-foreground-muted)]">
-                    {position.closedAt ? `Closed: ${formatDateOnly(position.closedAt)} ${formatTimeOnly(position.closedAt)}` : 'Open Position'}
+                  <div className="text-xs text-[var(--app-foreground-muted)] mb-1">
+                    Entry: {formatPrice(position.priceUsd)}
                   </div>
+                  {position.closedAt && (
+                    <>
+                      <div className="text-xs text-[var(--app-foreground-muted)] mt-2">
+                        Closed: {formatDateOnly(position.closedAt)} {formatTimeOnly(position.closedAt)}
+                      </div>
+                      <div className="text-xs text-[var(--app-foreground-muted)]">
+                        Exit: {position.closePriceUsd ? formatPrice(position.closePriceUsd) : '-'}
+                      </div>
+                    </>
+                  )}
+                  {!position.closedAt && (
+                    <div className="text-xs text-[var(--app-foreground-muted)] mt-2">
+                      Open Position
+                    </div>
+                  )}
                 </div>
                 <div className="ml-3 flex-shrink-0 flex items-center gap-2">
                   {getPerformanceSummary(position)}
