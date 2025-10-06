@@ -1,4 +1,4 @@
-export type PositionSide = "BUY";
+export type PositionSide = "BUY" | "SELL";
 export type PositionStatus = "OPEN" | "CLOSED";
 
 export interface Position {
@@ -47,9 +47,16 @@ export function closePosition(id: string, closedAt: string, closePriceUsd: numbe
   position.closedAt = closedAt
   position.closePriceUsd = closePriceUsd
   
-  // Calculate profit/loss - only BUY positions supported
-  position.profitLoss = closePriceUsd - position.priceUsd
-  position.profitLossPercent = ((closePriceUsd - position.priceUsd) / position.priceUsd) * 100
+  // Calculate profit/loss based on position side
+  if (position.side === "BUY") {
+    // BUY: profit if close price > open price
+    position.profitLoss = closePriceUsd - position.priceUsd
+    position.profitLossPercent = ((closePriceUsd - position.priceUsd) / position.priceUsd) * 100
+  } else {
+    // SELL: profit if close price < open price (inverse logic)
+    position.profitLoss = position.priceUsd - closePriceUsd
+    position.profitLossPercent = ((position.priceUsd - closePriceUsd) / position.priceUsd) * 100
+  }
   
   return position
 }

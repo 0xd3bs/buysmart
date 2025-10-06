@@ -22,66 +22,110 @@ export interface SwapTokens {
 }
 
 /**
- * Handles automatic position creation after a successful swap
+ * Handles automatic position management after a successful swap
+ * - USDC→ETH swaps: Opens a BUY position
+ * - ETH→USDC swaps: Closes the oldest OPEN position
  * This function is completely non-blocking and isolated from the swap process
- * It reuses the existing openPosition function from positions-context.tsx
  */
 export async function handleSwapSuccess(
   transactionData: SwapTransactionData,
   tokens: SwapTokens,
-  openPosition: (input: { 
-    side: "BUY"; 
-    priceUsd: number; 
-    amount?: number; 
-    openedAt?: string; 
+  openPosition: (input: {
+    side: "BUY";
+    priceUsd: number;
+    amount?: number;
+    openedAt?: string;
   }) => Promise<unknown>,
+  closePosition: (id: string, closedAt: string, closePriceUsd: number) => Promise<unknown>,
+  getOpenPositions: () => { id: string; openedAt: string }[],
   onSuccess?: () => void,
   onError?: (error: string) => void
 ): Promise<void> {
   // Run in background with a small delay to ensure swap UI is updated
   setTimeout(async () => {
     try {
-      console.log("🚀 Starting automatic position creation process");
+      console.log("🚀 Starting automatic position management process");
       console.log("📊 Transaction data received:", transactionData);
       console.log("🔄 Swap type check:", tokens);
 
-      // Only create position for USDC -> ETH swaps (BUY positions)
       const isUSDCToETH = tokens.fromSymbol === 'USDC' && tokens.toSymbol === 'ETH';
-      
-      if (!isUSDCToETH) {
-        console.log("ℹ️ Not a USDC -> ETH swap, skipping position creation");
+      const isETHToUSDC = tokens.fromSymbol === 'ETH' && tokens.toSymbol === 'USDC';
+
+      // Handle BUY swap (USDC → ETH): Create new position
+      if (isUSDCToETH) {
+        console.log("💰 BUY swap detected - Creating new position");
+
+        const ethPrice = await extractPriceFromSwap(transactionData);
+
+        if (ethPrice <= 0) {
+          console.warn("❌ Could not determine ETH price from swap data");
+          onError?.("Could not determine ETH price");
+          return;
+        }
+
+        console.log("✅ Creating BUY position with price:", ethPrice);
+
+        const transactionTimestamp = extractTransactionTimestamp(transactionData);
+
+        const position = await openPosition({
+          side: "BUY",
+          priceUsd: ethPrice,
+          openedAt: transactionTimestamp,
+        });
+
+        console.log("✅ BUY Position created successfully:", position);
+        onSuccess?.();
         return;
       }
 
-      // Extract price information from transaction data
-      const ethPrice = await extractPriceFromSwap(transactionData);
-      
-      if (ethPrice <= 0) {
-        console.warn("❌ Could not determine ETH price from swap data");
-        onError?.("Could not determine ETH price");
+      // Handle SELL swap (ETH → USDC): Close oldest open position
+      if (isETHToUSDC) {
+        console.log("📉 SELL swap detected - Closing oldest open position");
+
+        const openPositions = getOpenPositions();
+
+        if (openPositions.length === 0) {
+          console.warn("⚠️ No open positions to close");
+          onError?.("No open positions available to close");
+          return;
+        }
+
+        // Find oldest open position (sort by openedAt ascending, take first)
+        const oldestPosition = openPositions.sort((a, b) =>
+          new Date(a.openedAt).getTime() - new Date(b.openedAt).getTime()
+        )[0];
+
+        console.log("🎯 Found oldest position to close:", oldestPosition.id);
+
+        const ethPrice = await extractPriceFromSwap(transactionData);
+
+        if (ethPrice <= 0) {
+          console.warn("❌ Could not determine ETH price from swap data");
+          onError?.("Could not determine ETH price");
+          return;
+        }
+
+        console.log("✅ Closing position with price:", ethPrice);
+
+        const transactionTimestamp = extractTransactionTimestamp(transactionData);
+
+        const closedPosition = await closePosition(
+          oldestPosition.id,
+          transactionTimestamp,
+          ethPrice
+        );
+
+        console.log("✅ Position closed successfully:", closedPosition);
+        onSuccess?.();
         return;
       }
 
-      console.log("✅ Creating position with price:", ethPrice);
-      
-      // Extract timestamp from transaction data or use current time
-      // This ensures consistency with manual position creation format
-      const transactionTimestamp = extractTransactionTimestamp(transactionData);
-      
-      // Use the existing openPosition function from positions-context.tsx
-      // This ensures consistency with manual position creation
-      const position = await openPosition({
-        side: "BUY",
-        priceUsd: ethPrice,
-        openedAt: transactionTimestamp,
-      });
+      // Neither USDC→ETH nor ETH→USDC
+      console.log("ℹ️ Not a supported swap type, skipping position management");
 
-      console.log("✅ Position created successfully:", position);
-      onSuccess?.();
-      
     } catch (error) {
-      console.error("❌ Failed to create position from swap:", error);
-      onError?.(`Failed to create position: ${error}`);
+      console.error("❌ Failed to manage position from swap:", error);
+      onError?.(`Failed to manage position: ${error}`);
     }
   }, 100);
 }
