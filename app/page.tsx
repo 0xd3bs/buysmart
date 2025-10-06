@@ -148,7 +148,7 @@ export default function App() {
               items={[
                 { key: "trade", label: "Smart Swap" },
                 { key: "dashboard", label: "Position Tracker" },
-                { key: "swapping", label: "Swapping" },
+                { key: "swapping", label: "Standard Swap" },
               ]}
               activeKey={activeTab}
               onChange={(key) => setActiveTab(key as "trade" | "dashboard" | "swapping")}
