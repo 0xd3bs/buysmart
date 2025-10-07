@@ -109,7 +109,12 @@ export function Home() {
   const [swapKey, setSwapKey] = useState(0);
   const [swapSuccessMessage, setSwapSuccessMessage] = useState<string | null>(null);
   const [isCreatingPosition, setIsCreatingPosition] = useState(false);
-  const [actualSwapTokens, setActualSwapTokens] = useState<{ from: string; to: string } | null>(null);
+  const [actualSwapData, setActualSwapData] = useState<{
+    fromToken: string;
+    toToken: string;
+    fromAmount: string;
+    toAmount: string;
+  } | null>(null);
 
   // Get positions context for auto-managing positions
   const { openPosition, closePosition, positions } = usePositions();
@@ -135,18 +140,17 @@ export function Home() {
 
     setIsCreatingPosition(true);
 
-    // Show immediate success message (swap completed successfully)
-    setSwapSuccessMessage("✅ Swap completed successfully!");
-
-    // Clear success message after 3 seconds
-    setTimeout(() => {
-      setSwapSuccessMessage(null);
-    }, 3000);
-
-    // Use actual swap tokens (from onStatus) instead of prediction tokens
-    const tokens: SwapTokens = actualSwapTokens
-      ? { fromSymbol: actualSwapTokens.from, toSymbol: actualSwapTokens.to }
+    // Use actual swap data (tokens + amounts from onStatus) instead of prediction
+    const tokens: SwapTokens = actualSwapData
+      ? { fromSymbol: actualSwapData.fromToken, toSymbol: actualSwapData.toToken }
       : { fromSymbol: fromToken.symbol, toSymbol: toToken.symbol }; // Fallback
+
+    // Pass amounts to handler for exact price calculation
+    const enhancedTransactionData = {
+      ...transactionData,
+      fromAmount: actualSwapData?.fromAmount,
+      toAmount: actualSwapData?.toAmount,
+    };
 
     // Helper to get open positions
     const getOpenPositions = () => {
@@ -156,27 +160,27 @@ export function Home() {
     };
 
     await createPositionFromSwap(
-      transactionData,
+      enhancedTransactionData,
       tokens,
       openPosition,
       closePosition,
       getOpenPositions,
       // Success callback with action details
       (positionAction: PositionAction) => {
-        // Generate appropriate message based on actual action performed
-        let message = "✅ Swap completed! ";
+        // Generate message focused on position action (Swap component shows its own success)
+        let message = "";
 
         if (positionAction.action === "opened") {
-          message += `${positionAction.side} position opened in Position Tracker.`;
+          message = `📈 ${positionAction.side} position opened in Position Tracker`;
         } else {
-          message += `${positionAction.side} position closed in Position Tracker.`;
+          message = `📉 ${positionAction.side} position closed in Position Tracker`;
         }
 
         setSwapSuccessMessage(message);
 
         setTimeout(() => {
           setSwapSuccessMessage(null);
-        }, 5000);
+        }, 4000);
         setIsCreatingPosition(false);
       },
       // Error callback (silent - don't show to user)
@@ -188,19 +192,34 @@ export function Home() {
     );
   };
 
-  // Handle swap status changes to capture actual tokens used
+  // Handle swap status changes to capture actual swap data (tokens + amounts)
   const handleSwapStatus = useCallback((lifecycleStatus: any) => {
-    // Capture tokens from lifecycle status when available
-    if (lifecycleStatus.statusData?.tokenFrom && lifecycleStatus.statusData?.tokenTo) {
-      const fromSymbol = lifecycleStatus.statusData.tokenFrom.symbol;
-      const toSymbol = lifecycleStatus.statusData.tokenTo.symbol;
+    // Capture complete swap data from amountChange events
+    if (
+      lifecycleStatus.statusName === 'amountChange' &&
+      lifecycleStatus.statusData?.tokenFrom &&
+      lifecycleStatus.statusData?.tokenTo &&
+      lifecycleStatus.statusData?.amountFrom &&
+      lifecycleStatus.statusData?.amountTo
+    ) {
+      const swapData = {
+        fromToken: lifecycleStatus.statusData.tokenFrom.symbol,
+        toToken: lifecycleStatus.statusData.tokenTo.symbol,
+        fromAmount: lifecycleStatus.statusData.amountFrom,
+        toAmount: lifecycleStatus.statusData.amountTo,
+      };
 
-      // Only update if tokens actually changed
-      setActualSwapTokens(prev => {
-        if (prev?.from === fromSymbol && prev?.to === toSymbol) {
+      // Only update if data actually changed
+      setActualSwapData(prev => {
+        if (
+          prev?.fromToken === swapData.fromToken &&
+          prev?.toToken === swapData.toToken &&
+          prev?.fromAmount === swapData.fromAmount &&
+          prev?.toAmount === swapData.toAmount
+        ) {
           return prev; // No change, don't trigger re-render
         }
-        return { from: fromSymbol, to: toSymbol };
+        return swapData;
       });
     }
   }, []);

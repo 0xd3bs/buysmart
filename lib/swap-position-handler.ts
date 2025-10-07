@@ -63,7 +63,7 @@ export async function handleSwapSuccess(
       const isUSDCToETH = tokens.fromSymbol === 'USDC' && tokens.toSymbol === 'ETH';
       const isETHToUSDC = tokens.fromSymbol === 'ETH' && tokens.toSymbol === 'USDC';
 
-      const ethPrice = await extractPriceFromSwap(transactionData);
+      const ethPrice = await extractPriceFromSwap(transactionData, tokens);
 
       if (ethPrice <= 0) {
         console.warn("❌ Could not determine ETH price from swap data");
@@ -164,47 +164,55 @@ export async function handleSwapSuccess(
 }
 
 /**
- * Extracts ETH price from transaction data
- * Tries multiple methods to get the most accurate price
- * Reuses the same logic as manual position creation
+ * Extracts ETH price from swap transaction
+ * Primary method: Calculate from actual swap amounts (most accurate)
+ * Fallback: CoinGecko API (less accurate, only if amounts unavailable)
  */
-async function extractPriceFromSwap(transactionData: SwapTransactionData): Promise<number> {
-  // Method 1: Direct price from transaction
-  if (transactionData?.price) {
-    console.log("💰 Using transaction price:", transactionData.price);
-    return transactionData.price;
-  }
-
-  // Method 2: Execution price
-  if (transactionData?.executionPrice) {
-    console.log("💰 Using execution price:", transactionData.executionPrice);
-    return transactionData.executionPrice;
-  }
-
-  // Method 3: Calculate from amounts
+async function extractPriceFromSwap(transactionData: SwapTransactionData, tokens: SwapTokens): Promise<number> {
+  // Method 1: Calculate exact price from swap amounts (MOST ACCURATE)
+  // This gives us the EXACT price at which the swap executed (includes slippage, fees, etc.)
   if (transactionData?.fromAmount && transactionData?.toAmount) {
-    const usdcAmount = parseFloat(transactionData.fromAmount);
-    const ethAmount = parseFloat(transactionData.toAmount);
-    
-    if (ethAmount > 0) {
-      const calculatedPrice = usdcAmount / ethAmount;
-      console.log("💰 Calculated price from amounts:", { calculatedPrice, usdcAmount, ethAmount });
-      return calculatedPrice;
+    const fromAmount = parseFloat(transactionData.fromAmount);
+    const toAmount = parseFloat(transactionData.toAmount);
+
+    // Determine which is USDC and which is ETH based on token symbols
+    const isUSDCToETH = tokens.fromSymbol === 'USDC' && tokens.toSymbol === 'ETH';
+    const isETHToUSDC = tokens.fromSymbol === 'ETH' && tokens.toSymbol === 'USDC';
+
+    if (isUSDCToETH && toAmount > 0) {
+      // USDC→ETH: price = USDC amount / ETH amount
+      const exactPrice = fromAmount / toAmount;
+      console.log("💰 Exact swap price (USDC→ETH):", {
+        usdcAmount: fromAmount,
+        ethAmount: toAmount,
+        pricePerETH: exactPrice
+      });
+      return exactPrice;
+    }
+
+    if (isETHToUSDC && fromAmount > 0) {
+      // ETH→USDC: price = USDC amount / ETH amount
+      const exactPrice = toAmount / fromAmount;
+      console.log("💰 Exact swap price (ETH→USDC):", {
+        ethAmount: fromAmount,
+        usdcAmount: toAmount,
+        pricePerETH: exactPrice
+      });
+      return exactPrice;
     }
   }
 
-  // Method 4: Fallback to current market price using coingecko-api
-  // This reuses the same API logic as manual position creation
-  console.log("🔄 Fetching current ETH price as fallback using coingecko-api");
+  // Method 2: Fallback to CoinGecko (only if amounts not available)
+  console.warn("⚠️ Swap amounts not available, falling back to CoinGecko market price");
+  console.log("🔄 Fetching current ETH price from CoinGecko API");
   try {
     const priceData = await getEthPriceWithFallback();
-    console.log("💰 Using fallback price from coingecko-api:", priceData.price);
+    console.log("💰 Using CoinGecko fallback price:", priceData.price);
     return priceData.price;
   } catch (priceError) {
-    console.warn("❌ Failed to fetch current ETH price using coingecko-api:", priceError);
+    console.error("❌ Failed to fetch ETH price from CoinGecko:", priceError);
+    throw new Error("Could not determine ETH price from swap or external API");
   }
-
-  return 0;
 }
 
 /**
