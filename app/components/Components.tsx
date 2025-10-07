@@ -7,6 +7,7 @@ import {
   SwapButton,
   SwapMessage,
   SwapToast,
+  SwapToggleButton,
 } from '@coinbase/onchainkit/swap';
 
 import type { Token } from "@coinbase/onchainkit/token";
@@ -108,7 +109,7 @@ export function Home() {
   const [swapKey, setSwapKey] = useState(0);
   const [swapSuccessMessage, setSwapSuccessMessage] = useState<string | null>(null);
   const [isCreatingPosition, setIsCreatingPosition] = useState(false);
-  
+
   // Get positions context for auto-managing positions
   const { openPosition, closePosition, positions } = usePositions();
 
@@ -243,16 +244,16 @@ export function Home() {
     }
   };
 
-  // Enable swap for both positive (BUY) and negative (SELL) predictions
+  // Enable swap when prediction is available
   const isSwapDisabled = !isConnected || !predictionData;
 
   const targetToken = predictionData?.tokenToBuy && TOKEN_MAP[predictionData.tokenToBuy]
                   ? TOKEN_MAP[predictionData.tokenToBuy]
                   : ETH_TOKEN; // Default to ETH if no prediction
 
-  // Determine swap direction based on prediction
-  // Positive prediction: BUY (USDC → ETH)
-  // Negative prediction: SELL (ETH → USDC)
+  // Initialize swap direction based on prediction (user can change via SwapToggleButton)
+  // Positive prediction: suggest BUY (USDC → ETH)
+  // Negative prediction: suggest SELL (ETH → USDC)
   const fromToken = predictionData?.prediction === 'negative' ? targetToken : USDC_TOKEN;
   const toToken = predictionData?.prediction === 'negative' ? USDC_TOKEN : targetToken;
 
@@ -272,25 +273,26 @@ export function Home() {
       </div>
 
       <Card
-        title={predictionData?.prediction === 'negative' ? "Sell" : "Buy"}
+        title="Trade"
         titleExtra={
           <Popover
             trigger={<Icon name="help-circle" size="sm" className="text-[var(--app-foreground-muted)]" />}
           >
-            <p><strong>This mini app gives you predictions: BUY or SELL.</strong></p>
+            <p><strong>Get ML-powered swap recommendations.</strong></p>
             <ul className="mt-2 space-y-1 list-disc list-inside text-xs">
-              <li>When <strong>BUY</strong> → you can swap USDC to ETH (opens position).</li>
-              <li>When <strong>SELL</strong> → you can swap ETH to USDC (closes position).</li>
+              <li><strong>BUY signal</strong> → suggests entering the market (USDC → ETH).</li>
+              <li><strong>SELL signal</strong> → suggests exiting the market (ETH → USDC).</li>
+              <li>You can swap in any direction using the toggle button.</li>
             </ul>
-            <p className="mt-2 text-xs italic">Predictions are based on an 🧠 ML model.</p>
+            <p className="mt-2 text-xs italic">Predictions are suggestions based on an 🧠 ML model.</p>
           </Popover>
         }
       >
         <p className="text-[var(--app-foreground-muted)] mb-4">
-          🧠 ML model analyzes the market and tells you when to buy or sell!
+          🧠 Get ML-powered recommendations, then swap in any direction you prefer!
         </p>
         <p className="text-xs italic text-[var(--app-foreground-muted)] text-center mb-4">
-          💡 For best results, check predictions at market close or at the same time each day.
+          💡 Predictions are suggestions - you always have the final say.
         </p>
         {!isConnected && (
           <p className="text-[var(--app-foreground-muted)] text-center text-xs" style={{ marginTop: 'var(--space-feedback-top)', marginBottom: 'var(--space-help-bottom)' }}>
@@ -340,7 +342,7 @@ export function Home() {
             )}
           </div>
           <fieldset disabled={isSwapDisabled} className="relative" style={{ marginTop: 'var(--space-swap-top)' }}>
-            <Swap 
+            <Swap
               key={swapKey}
               onSuccess={handleSwapSuccess}
               onError={handleSwapError}
@@ -353,6 +355,10 @@ export function Home() {
                   token={fromToken}
                   type="from"
                 />
+              </div>
+              {/* SwapToggleButton: always visible, allows user to swap in any direction */}
+              <div className="flex justify-center items-center" style={{ margin: 'var(--space-toggle-vertical) 0', minHeight: 'var(--toggle-button-height)' }}>
+                <SwapToggleButton />
               </div>
               <div className="relative">
                 <SwapAmountInput

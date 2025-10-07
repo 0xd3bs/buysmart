@@ -23,7 +23,6 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { Button } from "./components/Components";
 import { Icon } from "./components/Components";
 import { Home } from "./components/Components";
-import { Swapping } from "./components/Swapping";
 import { Tabs } from "@/components/ui/Tabs";
 import { Dashboard } from "@/components/dashboard/Dashboard";
 import { PositionsProvider } from "@/lib/positions-context";
@@ -31,7 +30,7 @@ import { PositionsProvider } from "@/lib/positions-context";
 export default function App() {
   const { setFrameReady, isFrameReady, context } = useMiniKit();
   const [frameAdded, setFrameAdded] = useState(false);
-  const [activeTab, setActiveTab] = useState<"trade" | "dashboard" | "swapping">("trade");
+  const [activeTab, setActiveTab] = useState<"trade" | "dashboard">("trade");
   const [appReady, setAppReady] = useState(false);
   const [walletContentReady, setWalletContentReady] = useState(false);
   const addFrame = useAddFrame();
@@ -148,16 +147,14 @@ export default function App() {
               items={[
                 { key: "trade", label: "Smart Swap" },
                 { key: "dashboard", label: "Position Tracker" },
-                { key: "swapping", label: "Standard Swap" },
               ]}
               activeKey={activeTab}
-              onChange={(key) => setActiveTab(key as "trade" | "dashboard" | "swapping")}
+              onChange={(key) => setActiveTab(key as "trade" | "dashboard")}
             />
           </div>
           <PositionsProvider>
             {activeTab === "trade" && <Home />}
             {activeTab === "dashboard" && <Dashboard />}
-            {activeTab === "swapping" && <Swapping />}
           </PositionsProvider>
         </main>
 
