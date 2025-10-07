@@ -351,7 +351,7 @@ export function Home() {
             <div className="swap-container">
               <div className="relative">
                 <SwapAmountInput
-                  label={predictionData?.prediction === 'negative' ? "Sell" : "Buy"}
+                  label="From"
                   token={fromToken}
                   type="from"
                 />
@@ -362,7 +362,7 @@ export function Home() {
               </div>
               <div className="relative">
                 <SwapAmountInput
-                  label="Receive"
+                  label="To"
                   token={toToken}
                   type="to"
                 />
