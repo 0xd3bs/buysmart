@@ -34,6 +34,11 @@ export interface SwapTokens {
  *
  * This function is completely non-blocking and isolated from the swap process
  */
+export interface PositionAction {
+  action: "opened" | "closed";
+  side: "BUY" | "SELL";
+}
+
 export async function handleSwapSuccess(
   transactionData: SwapTransactionData,
   tokens: SwapTokens,
@@ -45,7 +50,7 @@ export async function handleSwapSuccess(
   }) => Promise<unknown>,
   closePosition: (id: string, closedAt: string, closePriceUsd: number) => Promise<unknown>,
   getOpenPositions: () => { id: string; openedAt: string; side: "BUY" | "SELL" }[],
-  onSuccess?: () => void,
+  onSuccess?: (action: PositionAction) => void,
   onError?: (error: string) => void
 ): Promise<void> {
   // Run in background with a small delay to ensure swap UI is updated
@@ -90,7 +95,7 @@ export async function handleSwapSuccess(
           );
 
           console.log("✅ SELL position closed successfully:", closedPosition);
-          onSuccess?.();
+          onSuccess?.({ action: "closed", side: "SELL" });
           return;
         }
 
@@ -104,7 +109,7 @@ export async function handleSwapSuccess(
         });
 
         console.log("✅ BUY position created successfully:", position);
-        onSuccess?.();
+        onSuccess?.({ action: "opened", side: "BUY" });
         return;
       }
 
@@ -130,7 +135,7 @@ export async function handleSwapSuccess(
           );
 
           console.log("✅ BUY position closed successfully:", closedPosition);
-          onSuccess?.();
+          onSuccess?.({ action: "closed", side: "BUY" });
           return;
         }
 
@@ -144,7 +149,7 @@ export async function handleSwapSuccess(
         });
 
         console.log("✅ SELL position created successfully:", position);
-        onSuccess?.();
+        onSuccess?.({ action: "opened", side: "SELL" });
         return;
       }
 

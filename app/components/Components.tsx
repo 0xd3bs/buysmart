@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useState, useEffect, useRef } from "react";
+import { type ReactNode, useState, useEffect, useRef, useCallback } from "react";
 import {
   Swap,
   SwapAmountInput,
@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { Card } from "@/components/ui/Card";
 import { usePositions } from "@/lib/positions-context";
-import { handleSwapSuccess as createPositionFromSwap, type SwapTransactionData, type SwapTokens } from "@/lib/swap-position-handler";
+import { handleSwapSuccess as createPositionFromSwap, type SwapTransactionData, type SwapTokens, type PositionAction } from "@/lib/swap-position-handler";
 
 // Re-exports for backward compatibility
 export { Button } from "@/components/ui/Button";
@@ -109,6 +109,7 @@ export function Home() {
   const [swapKey, setSwapKey] = useState(0);
   const [swapSuccessMessage, setSwapSuccessMessage] = useState<string | null>(null);
   const [isCreatingPosition, setIsCreatingPosition] = useState(false);
+  const [actualSwapTokens, setActualSwapTokens] = useState<{ from: string; to: string } | null>(null);
 
   // Get positions context for auto-managing positions
   const { openPosition, closePosition, positions } = usePositions();
@@ -142,11 +143,10 @@ export function Home() {
       setSwapSuccessMessage(null);
     }, 3000);
 
-    // Delegate position management to the dedicated handler
-    const tokens: SwapTokens = {
-      fromSymbol: fromToken.symbol,
-      toSymbol: toToken.symbol,
-    };
+    // Use actual swap tokens (from onStatus) instead of prediction tokens
+    const tokens: SwapTokens = actualSwapTokens
+      ? { fromSymbol: actualSwapTokens.from, toSymbol: actualSwapTokens.to }
+      : { fromSymbol: fromToken.symbol, toSymbol: toToken.symbol }; // Fallback
 
     // Helper to get open positions
     const getOpenPositions = () => {
@@ -161,16 +161,18 @@ export function Home() {
       openPosition,
       closePosition,
       getOpenPositions,
-      // Success callback
-      () => {
-        const isBuySwap = tokens.fromSymbol === 'USDC' && tokens.toSymbol === 'ETH';
-        const isSellSwap = tokens.fromSymbol === 'ETH' && tokens.toSymbol === 'USDC';
+      // Success callback with action details
+      (positionAction: PositionAction) => {
+        // Generate appropriate message based on actual action performed
+        let message = "✅ Swap completed! ";
 
-        if (isBuySwap) {
-          setSwapSuccessMessage("✅ Swap completed! BUY position automatically created in Position Tracker.");
-        } else if (isSellSwap) {
-          setSwapSuccessMessage("✅ Swap completed! Position automatically closed in Position Tracker.");
+        if (positionAction.action === "opened") {
+          message += `${positionAction.side} position opened in Position Tracker.`;
+        } else {
+          message += `${positionAction.side} position closed in Position Tracker.`;
         }
+
+        setSwapSuccessMessage(message);
 
         setTimeout(() => {
           setSwapSuccessMessage(null);
@@ -185,6 +187,23 @@ export function Home() {
       }
     );
   };
+
+  // Handle swap status changes to capture actual tokens used
+  const handleSwapStatus = useCallback((lifecycleStatus: any) => {
+    // Capture tokens from lifecycle status when available
+    if (lifecycleStatus.statusData?.tokenFrom && lifecycleStatus.statusData?.tokenTo) {
+      const fromSymbol = lifecycleStatus.statusData.tokenFrom.symbol;
+      const toSymbol = lifecycleStatus.statusData.tokenTo.symbol;
+
+      // Only update if tokens actually changed
+      setActualSwapTokens(prev => {
+        if (prev?.from === fromSymbol && prev?.to === toSymbol) {
+          return prev; // No change, don't trigger re-render
+        }
+        return { from: fromSymbol, to: toSymbol };
+      });
+    }
+  }, []);
 
   // Handle swap error
   const handleSwapError = (error: Error | string | unknown) => {
@@ -345,6 +364,7 @@ export function Home() {
             <Swap
               key={swapKey}
               onSuccess={handleSwapSuccess}
+              onStatus={handleSwapStatus}
               onError={handleSwapError}
               isSponsored
             >
