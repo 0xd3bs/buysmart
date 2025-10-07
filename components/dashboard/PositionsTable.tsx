@@ -6,7 +6,7 @@ import { Icon } from "@/components/ui/Icon"
 import { usePositions } from "@/lib/positions-context"
 import type { Position } from "@/lib/positions"
 import { formatDuration } from "@/lib/utils"
-import { getEthSpotPrice } from "@/lib/coinbase-api"
+import { getEthSpotPrice } from "@/lib/eth-price-api"
 import { useState, useEffect } from "react"
 
 export function PositionsTable() {
