@@ -36,6 +36,10 @@ The application's core feature is a prediction engine that analyzes market condi
     # Point this to your live prediction server or use the local mock API.
     NEXT_PUBLIC_API_URL=/api/prediction
 
+    # ETH Price API Configuration (optional, defaults to "coinbase")
+    # Options: "coinbase" | "coingecko"
+    NEXT_PUBLIC_API_ETH_SPOT=coinbase
+
     # Shared/OnchainKit variables
     NEXT_PUBLIC_ONCHAINKIT_PROJECT_NAME=
     NEXT_PUBLIC_URL=
