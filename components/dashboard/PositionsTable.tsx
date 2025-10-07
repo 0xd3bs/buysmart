@@ -273,9 +273,13 @@ export function PositionsTable() {
       ) : (
         <div className="space-y-3">
           {/* Last update info - moved inside card for better mobile layout */}
-          {lastPriceUpdate && (
+          {lastPriceUpdate && currentEthPrice && (
             <div className="text-xs text-[var(--app-foreground-muted)] text-center pb-2 border-b border-[var(--app-card-border)]">
-              Last price update: {new Date(lastPriceUpdate).toLocaleTimeString()}
+              <div className="flex items-center justify-center gap-2">
+                <span>ETH Spot: <span className="font-semibold text-[var(--app-foreground)]">{formatPrice(currentEthPrice)}</span></span>
+                <span className="text-[var(--app-card-border)]">•</span>
+                <span>Updated: {new Date(lastPriceUpdate).toLocaleTimeString()}</span>
+              </div>
             </div>
           )}
           
