@@ -1,7 +1,6 @@
 "use client";
 
 import { PositionsProvider } from "@/lib/positions-context";
-import { PositionManager } from "./PositionManager";
 import { PositionsTable } from "./PositionsTable";
 
 export function Dashboard() {
@@ -10,12 +9,10 @@ export function Dashboard() {
       <div className="space-y-6">
         <div className="text-center text-xs text-[var(--app-foreground-muted)]">
           <p>
-            Professional Trading Dashboard - Track your ETH BUY positions and monitor your trading performance.
+            Track your trading positions automatically created from swaps. All positions are managed based on your swap transactions.
           </p>
         </div>
 
-        <PositionManager />
-        
         <PositionsTable />
       </div>
     </PositionsProvider>

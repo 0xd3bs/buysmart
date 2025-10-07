@@ -179,10 +179,19 @@ export function PositionsTable() {
     
     // For open positions, calculate real-time P&L if we have current price
     if (position.status === "OPEN" && currentEthPrice) {
-      const currentPnL = currentEthPrice - position.priceUsd
-      const currentPnLPercent = (currentPnL / position.priceUsd) * 100
+      // Calculate P&L based on position side
+      let currentPnL: number
+      if (position.side === "BUY") {
+        // BUY: profit if current price > entry price
+        currentPnL = currentEthPrice - position.priceUsd
+      } else {
+        // SELL: profit if current price < entry price (inverse logic)
+        currentPnL = position.priceUsd - currentEthPrice
+      }
+
+      const currentPnLPercent = (Math.abs(currentPnL) / position.priceUsd) * 100 * (currentPnL >= 0 ? 1 : -1)
       const variationColor = getVariationColor(currentPnLPercent)
-      
+
       return (
         <div className="text-right">
           <div className="text-xs text-[var(--app-foreground-muted)]">

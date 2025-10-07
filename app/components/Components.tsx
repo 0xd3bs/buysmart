@@ -152,7 +152,7 @@ export function Home() {
     const getOpenPositions = () => {
       return positions
         .filter(p => p.status === "OPEN")
-        .map(p => ({ id: p.id, openedAt: p.openedAt }));
+        .map(p => ({ id: p.id, openedAt: p.openedAt, side: p.side }));
     };
 
     await createPositionFromSwap(
