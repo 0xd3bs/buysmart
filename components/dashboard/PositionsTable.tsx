@@ -6,7 +6,7 @@ import { Icon } from "@/components/ui/Icon"
 import { usePositions } from "@/lib/positions-context"
 import type { Position } from "@/lib/positions"
 import { formatDuration } from "@/lib/utils"
-import { getCurrentEthPriceWithTimestamp } from "@/lib/coingecko-api"
+import { getEthSpotPrice } from "@/lib/coinbase-api"
 import { useState, useEffect } from "react"
 
 export function PositionsTable() {
@@ -22,7 +22,7 @@ export function PositionsTable() {
   useEffect(() => {
     const updatePricesOnMount = async () => {
       try {
-        const priceData = await getCurrentEthPriceWithTimestamp()
+        const priceData = await getEthSpotPrice()
         setCurrentEthPrice(priceData.price)
         setLastPriceUpdate(priceData.fetched_at)
       } catch (error) {
@@ -42,7 +42,7 @@ export function PositionsTable() {
   const handleUpdatePrices = async () => {
     setIsUpdatingPrices(true)
     try {
-      const priceData = await getCurrentEthPriceWithTimestamp()
+      const priceData = await getEthSpotPrice()
       setCurrentEthPrice(priceData.price)
       setLastPriceUpdate(priceData.fetched_at)
     } catch (error) {

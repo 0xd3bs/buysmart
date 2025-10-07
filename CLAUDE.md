@@ -45,9 +45,7 @@ pnpm clean
 
 - **Home (Trade Tab)**: `app/components/Components.tsx` - Contains prediction logic and OnchainKit Swap component
 - **Dashboard (Position Tracker Tab)**: `components/dashboard/Dashboard.tsx` with sub-components:
-  - `PositionsTable.tsx` - Displays open/closed positions
-  - `OpenPositionForm.tsx` - Manual position creation
-  - `ClosePositionForm.tsx` - Position closing
+  - `PositionsTable.tsx` - Displays open/closed positions with real-time P&L using Coinbase spot prices
 
 ### Data Storage Architecture
 
@@ -76,12 +74,12 @@ The app automatically manages positions based on swap direction:
 - Records exit price and calculates profit/loss
 
 - Handler: `lib/swap-position-handler.ts`
-- Price extraction priority: transaction price → execution price → calculated from amounts → CoinGecko fallback
+- Price extraction: Calculated from actual swap amounts (fromAmount/toAmount). Throws error if amounts unavailable.
 - Integration point: `app/components/Components.tsx` (Home component's `onSuccess` callback)
 
 ### External APIs
 
-- **CoinGecko**: `lib/coingecko-api.ts` - ETH price fetching with current/historical endpoints
+- **Coinbase Spot Price**: `lib/coinbase-api.ts` - Current ETH-USD spot price fetching
 - **Prediction API**: `app/api/prediction/route.ts` - Mock ML prediction (returns random positive/negative)
 
 ## TypeScript Configuration
