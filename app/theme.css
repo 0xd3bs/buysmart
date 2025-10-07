@@ -27,7 +27,8 @@
   --pointer-font-size: 0.875rem;    /* pointer emoji size (subtle) */
   --pointer-offset: 0.5rem;         /* absolute offset above swap (subtle) */
   --pointer-height: 0.875rem;       /* fixed height to avoid reflow/cropping */
-  --space-toggle-vertical: 0.5rem;  /* vertical spacing around swap toggle button */
+  --space-toggle-vertical: 1rem;    /* vertical spacing around swap toggle button */
+  --toggle-button-height: 2.5rem;   /* min-height for toggle button container to prevent clipping */
 }
 
 @media (prefers-color-scheme: dark) {

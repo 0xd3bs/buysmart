@@ -22,23 +22,35 @@ export interface SwapTokens {
 }
 
 /**
- * Handles automatic position management after a successful swap
- * - USDC→ETH swaps: Opens a BUY position
- * - ETH→USDC swaps: Closes the oldest OPEN position
+ * Handles automatic position management after a successful swap with symmetric logic
+ *
+ * USDC→ETH (BUY swap):
+ *   - If SELL positions exist: closes the oldest SELL position
+ *   - Otherwise: opens a new BUY position
+ *
+ * ETH→USDC (SELL swap):
+ *   - If BUY positions exist: closes the oldest BUY position
+ *   - Otherwise: opens a new SELL position
+ *
  * This function is completely non-blocking and isolated from the swap process
  */
+export interface PositionAction {
+  action: "opened" | "closed";
+  side: "BUY" | "SELL";
+}
+
 export async function handleSwapSuccess(
   transactionData: SwapTransactionData,
   tokens: SwapTokens,
   openPosition: (input: {
-    side: "BUY";
+    side: "BUY" | "SELL";
     priceUsd: number;
     amount?: number;
     openedAt?: string;
   }) => Promise<unknown>,
   closePosition: (id: string, closedAt: string, closePriceUsd: number) => Promise<unknown>,
-  getOpenPositions: () => { id: string; openedAt: string }[],
-  onSuccess?: () => void,
+  getOpenPositions: () => { id: string; openedAt: string; side: "BUY" | "SELL" }[],
+  onSuccess?: (action: PositionAction) => void,
   onError?: (error: string) => void
 ): Promise<void> {
   // Run in background with a small delay to ensure swap UI is updated
@@ -51,21 +63,44 @@ export async function handleSwapSuccess(
       const isUSDCToETH = tokens.fromSymbol === 'USDC' && tokens.toSymbol === 'ETH';
       const isETHToUSDC = tokens.fromSymbol === 'ETH' && tokens.toSymbol === 'USDC';
 
-      // Handle BUY swap (USDC → ETH): Create new position
+      const ethPrice = await extractPriceFromSwap(transactionData, tokens);
+
+      if (ethPrice <= 0) {
+        console.warn("❌ Could not determine ETH price from swap data");
+        onError?.("Could not determine ETH price");
+        return;
+      }
+
+      const transactionTimestamp = extractTransactionTimestamp(transactionData);
+
+      // Handle BUY swap (USDC → ETH): Close SELL position OR open BUY position
       if (isUSDCToETH) {
-        console.log("💰 BUY swap detected - Creating new position");
+        console.log("💰 BUY swap detected (USDC → ETH)");
 
-        const ethPrice = await extractPriceFromSwap(transactionData);
+        const openPositions = getOpenPositions();
+        const openSellPositions = openPositions.filter(p => p.side === 'SELL');
 
-        if (ethPrice <= 0) {
-          console.warn("❌ Could not determine ETH price from swap data");
-          onError?.("Could not determine ETH price");
+        // If there are open SELL positions, close the oldest one
+        if (openSellPositions.length > 0) {
+          const oldestSellPosition = openSellPositions.sort((a, b) =>
+            new Date(a.openedAt).getTime() - new Date(b.openedAt).getTime()
+          )[0];
+
+          console.log("🎯 Closing oldest SELL position:", oldestSellPosition.id);
+
+          const closedPosition = await closePosition(
+            oldestSellPosition.id,
+            transactionTimestamp,
+            ethPrice
+          );
+
+          console.log("✅ SELL position closed successfully:", closedPosition);
+          onSuccess?.({ action: "closed", side: "SELL" });
           return;
         }
 
-        console.log("✅ Creating BUY position with price:", ethPrice);
-
-        const transactionTimestamp = extractTransactionTimestamp(transactionData);
+        // Otherwise, open a new BUY position
+        console.log("✅ Creating new BUY position with price:", ethPrice);
 
         const position = await openPosition({
           side: "BUY",
@@ -73,50 +108,48 @@ export async function handleSwapSuccess(
           openedAt: transactionTimestamp,
         });
 
-        console.log("✅ BUY Position created successfully:", position);
-        onSuccess?.();
+        console.log("✅ BUY position created successfully:", position);
+        onSuccess?.({ action: "opened", side: "BUY" });
         return;
       }
 
-      // Handle SELL swap (ETH → USDC): Close oldest open position
+      // Handle SELL swap (ETH → USDC): Close BUY position OR open SELL position
       if (isETHToUSDC) {
-        console.log("📉 SELL swap detected - Closing oldest open position");
+        console.log("📉 SELL swap detected (ETH → USDC)");
 
         const openPositions = getOpenPositions();
+        const openBuyPositions = openPositions.filter(p => p.side === 'BUY');
 
-        if (openPositions.length === 0) {
-          console.warn("⚠️ No open positions to close");
-          onError?.("No open positions available to close");
+        // If there are open BUY positions, close the oldest one
+        if (openBuyPositions.length > 0) {
+          const oldestBuyPosition = openBuyPositions.sort((a, b) =>
+            new Date(a.openedAt).getTime() - new Date(b.openedAt).getTime()
+          )[0];
+
+          console.log("🎯 Closing oldest BUY position:", oldestBuyPosition.id);
+
+          const closedPosition = await closePosition(
+            oldestBuyPosition.id,
+            transactionTimestamp,
+            ethPrice
+          );
+
+          console.log("✅ BUY position closed successfully:", closedPosition);
+          onSuccess?.({ action: "closed", side: "BUY" });
           return;
         }
 
-        // Find oldest open position (sort by openedAt ascending, take first)
-        const oldestPosition = openPositions.sort((a, b) =>
-          new Date(a.openedAt).getTime() - new Date(b.openedAt).getTime()
-        )[0];
+        // Otherwise, open a new SELL position
+        console.log("✅ Creating new SELL position with price:", ethPrice);
 
-        console.log("🎯 Found oldest position to close:", oldestPosition.id);
+        const position = await openPosition({
+          side: "SELL",
+          priceUsd: ethPrice,
+          openedAt: transactionTimestamp,
+        });
 
-        const ethPrice = await extractPriceFromSwap(transactionData);
-
-        if (ethPrice <= 0) {
-          console.warn("❌ Could not determine ETH price from swap data");
-          onError?.("Could not determine ETH price");
-          return;
-        }
-
-        console.log("✅ Closing position with price:", ethPrice);
-
-        const transactionTimestamp = extractTransactionTimestamp(transactionData);
-
-        const closedPosition = await closePosition(
-          oldestPosition.id,
-          transactionTimestamp,
-          ethPrice
-        );
-
-        console.log("✅ Position closed successfully:", closedPosition);
-        onSuccess?.();
+        console.log("✅ SELL position created successfully:", position);
+        onSuccess?.({ action: "opened", side: "SELL" });
         return;
       }
 
@@ -131,47 +164,55 @@ export async function handleSwapSuccess(
 }
 
 /**
- * Extracts ETH price from transaction data
- * Tries multiple methods to get the most accurate price
- * Reuses the same logic as manual position creation
+ * Extracts ETH price from swap transaction
+ * Primary method: Calculate from actual swap amounts (most accurate)
+ * Fallback: CoinGecko API (less accurate, only if amounts unavailable)
  */
-async function extractPriceFromSwap(transactionData: SwapTransactionData): Promise<number> {
-  // Method 1: Direct price from transaction
-  if (transactionData?.price) {
-    console.log("💰 Using transaction price:", transactionData.price);
-    return transactionData.price;
-  }
-
-  // Method 2: Execution price
-  if (transactionData?.executionPrice) {
-    console.log("💰 Using execution price:", transactionData.executionPrice);
-    return transactionData.executionPrice;
-  }
-
-  // Method 3: Calculate from amounts
+async function extractPriceFromSwap(transactionData: SwapTransactionData, tokens: SwapTokens): Promise<number> {
+  // Method 1: Calculate exact price from swap amounts (MOST ACCURATE)
+  // This gives us the EXACT price at which the swap executed (includes slippage, fees, etc.)
   if (transactionData?.fromAmount && transactionData?.toAmount) {
-    const usdcAmount = parseFloat(transactionData.fromAmount);
-    const ethAmount = parseFloat(transactionData.toAmount);
-    
-    if (ethAmount > 0) {
-      const calculatedPrice = usdcAmount / ethAmount;
-      console.log("💰 Calculated price from amounts:", { calculatedPrice, usdcAmount, ethAmount });
-      return calculatedPrice;
+    const fromAmount = parseFloat(transactionData.fromAmount);
+    const toAmount = parseFloat(transactionData.toAmount);
+
+    // Determine which is USDC and which is ETH based on token symbols
+    const isUSDCToETH = tokens.fromSymbol === 'USDC' && tokens.toSymbol === 'ETH';
+    const isETHToUSDC = tokens.fromSymbol === 'ETH' && tokens.toSymbol === 'USDC';
+
+    if (isUSDCToETH && toAmount > 0) {
+      // USDC→ETH: price = USDC amount / ETH amount
+      const exactPrice = fromAmount / toAmount;
+      console.log("💰 Exact swap price (USDC→ETH):", {
+        usdcAmount: fromAmount,
+        ethAmount: toAmount,
+        pricePerETH: exactPrice
+      });
+      return exactPrice;
+    }
+
+    if (isETHToUSDC && fromAmount > 0) {
+      // ETH→USDC: price = USDC amount / ETH amount
+      const exactPrice = toAmount / fromAmount;
+      console.log("💰 Exact swap price (ETH→USDC):", {
+        ethAmount: fromAmount,
+        usdcAmount: toAmount,
+        pricePerETH: exactPrice
+      });
+      return exactPrice;
     }
   }
 
-  // Method 4: Fallback to current market price using coingecko-api
-  // This reuses the same API logic as manual position creation
-  console.log("🔄 Fetching current ETH price as fallback using coingecko-api");
+  // Method 2: Fallback to CoinGecko (only if amounts not available)
+  console.warn("⚠️ Swap amounts not available, falling back to CoinGecko market price");
+  console.log("🔄 Fetching current ETH price from CoinGecko API");
   try {
     const priceData = await getEthPriceWithFallback();
-    console.log("💰 Using fallback price from coingecko-api:", priceData.price);
+    console.log("💰 Using CoinGecko fallback price:", priceData.price);
     return priceData.price;
   } catch (priceError) {
-    console.warn("❌ Failed to fetch current ETH price using coingecko-api:", priceError);
+    console.error("❌ Failed to fetch ETH price from CoinGecko:", priceError);
+    throw new Error("Could not determine ETH price from swap or external API");
   }
-
-  return 0;
 }
 
 /**
