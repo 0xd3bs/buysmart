@@ -8,6 +8,7 @@ import {
   SwapMessage,
   SwapToast,
   SwapToggleButton,
+  type LifecycleStatus,
 } from '@coinbase/onchainkit/swap';
 
 import type { Token } from "@coinbase/onchainkit/token";
@@ -193,7 +194,7 @@ export function Home() {
   };
 
   // Handle swap status changes to capture actual swap data (tokens + amounts)
-  const handleSwapStatus = useCallback((lifecycleStatus: any) => {
+  const handleSwapStatus = useCallback((lifecycleStatus: LifecycleStatus) => {
     // Capture complete swap data from amountChange events
     if (
       lifecycleStatus.statusName === 'amountChange' &&
