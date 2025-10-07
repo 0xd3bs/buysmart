@@ -1,12 +1,10 @@
 /**
  * Swap Position Handler
- * 
+ *
  * This module handles the automatic creation of positions after successful swaps.
  * It reuses the existing position creation logic from positions-context.tsx
  * to avoid code duplication and ensure consistency.
  */
-
-import { getEthPriceWithFallback } from "@/lib/coingecko-api";
 
 export interface SwapTransactionData {
   price?: number;
@@ -165,12 +163,11 @@ export async function handleSwapSuccess(
 
 /**
  * Extracts ETH price from swap transaction
- * Primary method: Calculate from actual swap amounts (most accurate)
- * Fallback: CoinGecko API (less accurate, only if amounts unavailable)
+ * Calculates exact price from actual swap amounts (includes slippage, fees, etc.)
+ * Throws error if amounts are not available - no fallback to external APIs
  */
 async function extractPriceFromSwap(transactionData: SwapTransactionData, tokens: SwapTokens): Promise<number> {
-  // Method 1: Calculate exact price from swap amounts (MOST ACCURATE)
-  // This gives us the EXACT price at which the swap executed (includes slippage, fees, etc.)
+  // Calculate exact price from swap amounts
   if (transactionData?.fromAmount && transactionData?.toAmount) {
     const fromAmount = parseFloat(transactionData.fromAmount);
     const toAmount = parseFloat(transactionData.toAmount);
@@ -202,17 +199,9 @@ async function extractPriceFromSwap(transactionData: SwapTransactionData, tokens
     }
   }
 
-  // Method 2: Fallback to CoinGecko (only if amounts not available)
-  console.warn("⚠️ Swap amounts not available, falling back to CoinGecko market price");
-  console.log("🔄 Fetching current ETH price from CoinGecko API");
-  try {
-    const priceData = await getEthPriceWithFallback();
-    console.log("💰 Using CoinGecko fallback price:", priceData.price);
-    return priceData.price;
-  } catch (priceError) {
-    console.error("❌ Failed to fetch ETH price from CoinGecko:", priceError);
-    throw new Error("Could not determine ETH price from swap or external API");
-  }
+  // No fallback - if we can't extract price from swap, it's an error
+  console.error("❌ Swap amounts not available in transaction data");
+  throw new Error("Could not determine ETH price from swap transaction. Missing fromAmount or toAmount.");
 }
 
 /**

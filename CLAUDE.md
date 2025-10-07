@@ -45,9 +45,7 @@ pnpm clean
 
 - **Home (Trade Tab)**: `app/components/Components.tsx` - Contains prediction logic and OnchainKit Swap component
 - **Dashboard (Position Tracker Tab)**: `components/dashboard/Dashboard.tsx` with sub-components:
-  - `PositionsTable.tsx` - Displays open/closed positions
-  - `OpenPositionForm.tsx` - Manual position creation
-  - `ClosePositionForm.tsx` - Position closing
+  - `PositionsTable.tsx` - Displays open/closed positions with real-time P&L using configurable ETH price API
 
 ### Data Storage Architecture
 
@@ -76,12 +74,14 @@ The app automatically manages positions based on swap direction:
 - Records exit price and calculates profit/loss
 
 - Handler: `lib/swap-position-handler.ts`
-- Price extraction priority: transaction price → execution price → calculated from amounts → CoinGecko fallback
+- Price extraction: Calculated from actual swap amounts (fromAmount/toAmount). Throws error if amounts unavailable.
 - Integration point: `app/components/Components.tsx` (Home component's `onSuccess` callback)
 
 ### External APIs
 
-- **CoinGecko**: `lib/coingecko-api.ts` - ETH price fetching with current/historical endpoints
+- **ETH Price API (Adapter)**: `lib/eth-price-api.ts` - Unified interface for ETH-USD pricing
+  - Supports both Coinbase (`lib/coinbase-api.ts`) and CoinGecko (`lib/coingecko-api.ts`)
+  - Configurable via `NEXT_PUBLIC_API_ETH_SPOT` environment variable (defaults to "coinbase")
 - **Prediction API**: `app/api/prediction/route.ts` - Mock ML prediction (returns random positive/negative)
 
 ## TypeScript Configuration
@@ -120,6 +120,10 @@ NEXT_PUBLIC_API_URL=/api/prediction
 NEXT_PUBLIC_ONCHAINKIT_PROJECT_NAME=
 NEXT_PUBLIC_ONCHAINKIT_PROJECT_ID=
 NEXT_PUBLIC_ONCHAINKIT_API_KEY=
+
+# ETH Price API (optional, defaults to "coinbase")
+# Options: "coinbase" | "coingecko"
+NEXT_PUBLIC_API_ETH_SPOT=coinbase
 
 # Frame metadata
 NEXT_PUBLIC_URL=

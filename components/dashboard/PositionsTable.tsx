@@ -6,7 +6,7 @@ import { Icon } from "@/components/ui/Icon"
 import { usePositions } from "@/lib/positions-context"
 import type { Position } from "@/lib/positions"
 import { formatDuration } from "@/lib/utils"
-import { getCurrentEthPriceWithTimestamp } from "@/lib/coingecko-api"
+import { getEthSpotPrice } from "@/lib/eth-price-api"
 import { useState, useEffect } from "react"
 
 export function PositionsTable() {
@@ -22,7 +22,7 @@ export function PositionsTable() {
   useEffect(() => {
     const updatePricesOnMount = async () => {
       try {
-        const priceData = await getCurrentEthPriceWithTimestamp()
+        const priceData = await getEthSpotPrice()
         setCurrentEthPrice(priceData.price)
         setLastPriceUpdate(priceData.fetched_at)
       } catch (error) {
@@ -42,7 +42,7 @@ export function PositionsTable() {
   const handleUpdatePrices = async () => {
     setIsUpdatingPrices(true)
     try {
-      const priceData = await getCurrentEthPriceWithTimestamp()
+      const priceData = await getEthSpotPrice()
       setCurrentEthPrice(priceData.price)
       setLastPriceUpdate(priceData.fetched_at)
     } catch (error) {
@@ -273,9 +273,13 @@ export function PositionsTable() {
       ) : (
         <div className="space-y-3">
           {/* Last update info - moved inside card for better mobile layout */}
-          {lastPriceUpdate && (
+          {lastPriceUpdate && currentEthPrice && (
             <div className="text-xs text-[var(--app-foreground-muted)] text-center pb-2 border-b border-[var(--app-card-border)]">
-              Last price update: {new Date(lastPriceUpdate).toLocaleTimeString()}
+              <div className="flex items-center justify-center gap-2">
+                <span>ETH Spot: <span className="font-semibold text-[var(--app-foreground)]">{formatPrice(currentEthPrice)}</span></span>
+                <span className="text-[var(--app-card-border)]">•</span>
+                <span>Updated: {new Date(lastPriceUpdate).toLocaleTimeString()}</span>
+              </div>
             </div>
           )}
           
