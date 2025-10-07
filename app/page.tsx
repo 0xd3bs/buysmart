@@ -25,7 +25,6 @@ import { Icon } from "./components/Components";
 import { Home } from "./components/Components";
 import { Tabs } from "@/components/ui/Tabs";
 import { Dashboard } from "@/components/dashboard/Dashboard";
-import { PositionsProvider } from "@/lib/positions-context";
 
 export default function App() {
   const { setFrameReady, isFrameReady, context } = useMiniKit();
@@ -152,10 +151,8 @@ export default function App() {
               onChange={(key) => setActiveTab(key as "trade" | "dashboard")}
             />
           </div>
-          <PositionsProvider>
-            {activeTab === "trade" && <Home />}
-            {activeTab === "dashboard" && <Dashboard />}
-          </PositionsProvider>
+          {activeTab === "trade" && <Home />}
+          {activeTab === "dashboard" && <Dashboard />}
         </main>
 
         <footer className="mt-2 pt-4 flex justify-center">

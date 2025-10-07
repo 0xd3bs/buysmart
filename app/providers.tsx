@@ -2,6 +2,7 @@
 
 import { type ReactNode, useMemo } from "react";
 import { MiniKitProvider } from "@coinbase/onchainkit/minikit";
+import { PositionsProvider } from "@/lib/positions-context";
 
 // Base chain configuration for MiniKit - moved outside component to prevent re-creation
 const base = {
@@ -45,7 +46,9 @@ export function Providers(props: { children: ReactNode }) {
       projectId={process.env.NEXT_PUBLIC_ONCHAINKIT_PROJECT_ID}
       config={config}
     >
-      {props.children}
+      <PositionsProvider>
+        {props.children}
+      </PositionsProvider>
     </MiniKitProvider>
   );
 }
